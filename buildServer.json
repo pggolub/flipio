@@ -12,8 +12,8 @@
 	"argv": [
 		"/opt/homebrew/bin/xcode-build-server"
 	],
-	"workspace": "/Users/Pavel_Golub/work/PuntaFree/Flipio.xcodeproj/project.xcworkspace",
-	"build_root": "/Users/Pavel_Golub/Library/Developer/Xcode/DerivedData/Flipio-adzgjfymuczelfedarjghpsqucih",
+	"workspace": "/Users/Pavel_Golub/work/Flipio/Flipio.xcodeproj/project.xcworkspace",
+	"build_root": "/Users/Pavel_Golub/Library/Developer/Xcode/DerivedData/Flipio-gxupaflxplxsyydydilmwwesfyim",
 	"scheme": "Flipio",
 	"kind": "xcode"
 }
