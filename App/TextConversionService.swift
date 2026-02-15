@@ -24,6 +24,11 @@ final class TextConversionService: @unchecked Sendable {
     private static let clipboardOperationDelay: TimeInterval = 0.05
     private static let backspaceProcessingDelay: TimeInterval = 0.2
     
+    // NOTE: Text deletion strategy
+    // Currently using select-and-delete (Shift+Left Arrow + Delete) universally as it works reliably across all apps.
+    // Future consideration: Other strategies like repeatBackspace or repeatControlBackspace could be added
+    // if specific applications require different approaches.
+    
     private let converter = LayoutConverter()
     private let pasteboard = NSPasteboard.general
     private let typedWordBuffer: TypedWordBuffer
@@ -157,7 +162,7 @@ final class TextConversionService: @unchecked Sendable {
     }
     
     /// Core primitive for typed-word scenarios: deletes `original` using
-    /// backspaces and types the `replacement` character by character.
+    /// select-and-delete (Shift+Left Arrow + Delete) and types the replacement.
     @discardableResult
     func replaceTypedWord(original: String) -> Bool {
         guard let conversion = converter.convertWithTarget(original) else {
@@ -170,9 +175,8 @@ final class TextConversionService: @unchecked Sendable {
             "replaceTypedWord: \(original, privacy: .private(mask: .hash)) → \(replacement, privacy: .private(mask: .hash))"
         )
         
-        simulateBackspace(count: original.count)
-        
-        // simulateBackspace_v2(count: original.count)
+        // Use select-and-delete strategy (works universally across all apps)
+        simulateBackspaceViaSelection(count: original.count)
 
         // Type the replacement text character by character
         simulateTyping(replacement)
@@ -180,7 +184,7 @@ final class TextConversionService: @unchecked Sendable {
         converter.applyTargetLayout(conversion)
         
         FlipioApp.logger.debug(
-            "replaceTypedWord: completed via backspace+typing"
+            "replaceTypedWord: completed via select+delete+typing"
         )
         return true
     }
@@ -253,53 +257,61 @@ final class TextConversionService: @unchecked Sendable {
         FlipioApp.logger.debug("simulatePaste: sending Cmd+V")
         return simulateKeyCombo(keyCode: CGKeyCode(kVK_ANSI_V), flags: .maskCommand)
     }
-    
-    private func simulateBackspace(count: Int) {
-        guard count > 0 else { return }
-        FlipioApp.logger.debug("simulateBackspace: sending \(count) × Backspace")
-        
-        let keyCode = CGKeyCode(kVK_Delete)
-        
-        for _ in 0..<count {
-            guard
-                let down = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true),
-                let up = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
-            else { 
-                FlipioApp.logger.error("simulateBackspace: failed to create CGEvent")
-                continue 
-            }
-            down.flags = []
-            up.flags = []
-            down.post(tap: .cghidEventTap)
-            usleep(10_000)
-            up.post(tap: .cghidEventTap)
-            // usleep(30_000)
-        }
-    }
 
-    private func simulateBackspace_v2(count: Int) {
+    /// Selects text using Shift+Left Arrow, then deletes it.
+    /// This method works reliably across all applications.
+    private func simulateBackspaceViaSelection(count: Int) {
         guard count > 0 else { return }
-        FlipioApp.logger.debug("simulateBackspace_v2: sending \(count) × Control+Backspace")
+        FlipioApp.logger.debug("simulateBackspaceViaSelection: selecting \(count) chars and deleting")
         
-        let keyCode = CGKeyCode(kVK_Delete)
+        guard let source = CGEventSource(stateID: .combinedSessionState) else {
+            FlipioApp.logger.error("simulateBackspaceViaSelection: failed to create CGEventSource")
+            return
+        }
         
+        let leftArrowCode = CGKeyCode(kVK_LeftArrow)
+        let deleteCode = CGKeyCode(kVK_Delete)
+        
+        // Select text by pressing Shift+Left Arrow multiple times
         for _ in 0..<count {
             guard
-                let down = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true),
-                let up = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
-            else { 
-                FlipioApp.logger.error("simulateBackspace_v2: failed to create CGEvent")
-                continue 
+                let down = CGEvent(keyboardEventSource: source, virtualKey: leftArrowCode, keyDown: true),
+                let up = CGEvent(keyboardEventSource: source, virtualKey: leftArrowCode, keyDown: false)
+            else {
+                FlipioApp.logger.error("simulateBackspaceViaSelection: failed to create arrow events")
+                continue
             }
             
-            down.flags = .maskControl
-            up.flags = .maskControl
+            down.flags = .maskShift
+            up.flags = .maskShift
             
-            down.post(tap: .cghidEventTap)
-            usleep(30_000)
-//            up.post(tap: .cghidEventTap)
-//            usleep(30_000)
+            down.setIntegerValueField(.eventSourceUserData, value: FlipioSyntheticEventUserData)
+            up.setIntegerValueField(.eventSourceUserData, value: FlipioSyntheticEventUserData)
+            
+            down.post(tap: .cgSessionEventTap)
+            usleep(10_000)
+            up.post(tap: .cgSessionEventTap)
         }
+        
+        // Now delete the selected text
+        usleep(10_000)
+        guard
+            let deleteDown = CGEvent(keyboardEventSource: source, virtualKey: deleteCode, keyDown: true),
+            let deleteUp = CGEvent(keyboardEventSource: source, virtualKey: deleteCode, keyDown: false)
+        else {
+            FlipioApp.logger.error("simulateBackspaceViaSelection: failed to create delete events")
+            return
+        }
+        
+        deleteDown.flags = []
+        deleteUp.flags = []
+        
+        deleteDown.setIntegerValueField(.eventSourceUserData, value: FlipioSyntheticEventUserData)
+        deleteUp.setIntegerValueField(.eventSourceUserData, value: FlipioSyntheticEventUserData)
+        
+        deleteDown.post(tap: .cgSessionEventTap)
+        usleep(10_000)
+        deleteUp.post(tap: .cgSessionEventTap)
     }
     
     private func simulateTyping(_ text: String) {
