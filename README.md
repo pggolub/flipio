@@ -21,6 +21,21 @@ A macOS menu bar app that instantly converts text between keyboard layouts. Perf
 
 ## Installation
 
+### Via Homebrew Cask (Recommended)
+
+```bash
+brew tap pavel-golub/flipio
+brew install --cask flipio
+```
+
+After installation, launch Flipio from your Applications folder and grant Accessibility permissions when prompted.
+
+### From GitHub Releases
+
+1. Download the latest `Flipio-X.Y.Z.zip` from [Releases](https://github.com/pavel-golub/flipio/releases)
+2. Extract and move `Flipio.app` to your Applications folder
+3. Launch Flipio and grant Accessibility permissions when prompted
+
 ### From Source
 
 1. Clone the repository:
