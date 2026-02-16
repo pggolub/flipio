@@ -106,3 +106,9 @@ struct ConversionResult: Sendable {
     let targetLayout: KeyboardLayoutSide?
     let selection: KeyboardLayoutSelection
 }
+
+/// Result of a next layout conversion (for cycling through layouts).
+struct NextLayoutConversionResult: Sendable {
+    let text: String
+    let targetLayoutID: String
+}

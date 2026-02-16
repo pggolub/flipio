@@ -7,6 +7,7 @@
 
 import AppKit
 import ApplicationServices
+import Carbon.HIToolbox
 import os
 
 /// Maintains a buffer of the "current word" the user is typing, per target process.
@@ -35,6 +36,20 @@ final class TypedWordBuffer {
         guard type == .keyDown else {
             logEvent("non-keyDown event (type=\(type))", event: event, pid: targetPid)
             reset(reason: "non-keyDown event: \(type)")
+            return
+        }
+        
+        // Handle backspace/delete key
+        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+        if keyCode == kVK_Delete {
+            if !buffer.isEmpty {
+                buffer.removeLast()
+                FlipioApp.logger.debug(
+                    "typedBuffer: backspace pressed, removed last char (buffer=\(self.getBuffer() ?? "nil"))"
+                )
+            } else {
+                FlipioApp.logger.debug("typedBuffer: backspace pressed on empty buffer")
+            }
             return
         }
         

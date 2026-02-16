@@ -61,6 +61,63 @@ struct SystemInputSourceProvider {
         return (primary: primary, secondary: secondary)
     }
     
+    /// Returns a preferred pair of layouts based on system preferred languages.
+    /// Uses the first two input sources that match the system's preferred languages.
+    /// Falls back to the first two selectable sources if no language match is found.
+    func selectPreferredPair() -> (primary: KeyboardInputSourceInfo, secondary: KeyboardInputSourceInfo)? {
+        let sources = selectableSources()
+        guard sources.count >= 2 else { return nil }
+        
+        // Get system preferred languages
+        let preferredLanguages = Locale.preferredLanguages
+        guard preferredLanguages.count >= 2 else {
+            // Fall back to first two sources
+            return (primary: sources[0], secondary: sources[1])
+        }
+        
+        // Try to match sources with preferred languages
+        var matchedSources: [KeyboardInputSourceInfo] = []
+        for language in preferredLanguages.prefix(2) {
+            let languageCode = String(language.prefix(2)) // e.g., "en" from "en-US"
+            if let source = sources.first(where: { source in
+                source.id.lowercased().contains(languageCode.lowercased()) && 
+                !matchedSources.contains(where: { $0.id == source.id })
+            }) {
+                matchedSources.append(source)
+            }
+        }
+        
+        // If we found at least 2 matching sources, use them
+        if matchedSources.count >= 2 {
+            return (primary: matchedSources[0], secondary: matchedSources[1])
+        }
+        
+        // Fall back to first two sources
+        return (primary: sources[0], secondary: sources[1])
+    }
+    
+    /// Returns the next layout in the cycle for live typing conversion.
+    /// Cycles through all available layouts: A->B->C->A...
+    func selectNextLayout(after currentID: String?) -> KeyboardInputSourceInfo? {
+        let sources = selectableSources()
+        guard !sources.isEmpty else { return nil }
+        
+        // If no current ID, return first source
+        guard let currentID = currentID else {
+            return sources.first
+        }
+        
+        // Find current source index
+        if let currentIndex = sources.firstIndex(where: { $0.id == currentID }) {
+            // Return next source, wrapping around to start
+            let nextIndex = (currentIndex + 1) % sources.count
+            return sources[nextIndex]
+        }
+        
+        // If current source not found, return first source
+        return sources.first
+    }
+    
     /// Activates the input source with the given ID.
     func activateInputSource(id: String) {
         let options: [String: Any] = [kTISPropertyInputSourceID as String: id]
@@ -138,6 +195,15 @@ enum KeyboardLayoutPairBuilder {
         }
 
         return (aToB: aToB, bToA: bToA)
+    }
+    
+    /// Builds a one-way character mapping from source A to source B.
+    static func buildOneWayMapping(
+        from sourceA: TISInputSource,
+        to sourceB: TISInputSource
+    ) -> [Character: Character] {
+        let mapping = buildMapping(from: sourceA, to: sourceB)
+        return mapping.aToB
     }
 
     private static func translateCharacter(

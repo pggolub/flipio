@@ -39,15 +39,17 @@ final class TextConversionService: @unchecked Sendable {
     
     func convert() {
         if let word = typedWordBuffer.getBuffer(), !word.isEmpty {
-            // New typed word case: convert it in-place and remember how.
+            // New typed word case: convert it in-place using cycle through all layouts.
             FlipioApp.logger.info(
                 "Attempting typed-word conversion for \(word, privacy: .private(mask: .hash))"
             )
             
-            let success = replaceTypedWord(original: word)
+            let success = replaceTypedWordWithNextLayout(original: word)
             if success {
-                //allow for multiple conversions back and forth by Option tapping
-                typedWordBuffer.set(converter.convert(word))
+                // Update buffer with converted text for next conversion
+                if let converted = converter.convertToNextLayout(word) {
+                    typedWordBuffer.set(converted.text)
+                }
             }
         }
         // selection text conversion
@@ -185,6 +187,34 @@ final class TextConversionService: @unchecked Sendable {
         
         FlipioApp.logger.debug(
             "replaceTypedWord: completed via select+delete+typing"
+        )
+        return true
+    }
+    
+    /// Replaces typed word with next layout in cycle (for live typing).
+    /// Cycles through all available layouts: A->B->C->A...
+    @discardableResult
+    func replaceTypedWordWithNextLayout(original: String) -> Bool {
+        guard let conversion = converter.convertToNextLayout(original) else {
+            FlipioApp.logger.warning("replaceTypedWordWithNextLayout: no keyboard layouts available")
+            return false
+        }
+        let replacement = conversion.text
+        
+        FlipioApp.logger.notice(
+            "replaceTypedWordWithNextLayout: \(original, privacy: .private(mask: .hash)) → \(replacement, privacy: .private(mask: .hash))"
+        )
+        
+        // Use select-and-delete strategy (works universally across all apps)
+        simulateBackspaceViaSelection(count: original.count)
+
+        // Type the replacement text character by character
+        simulateTyping(replacement)
+
+        converter.applyNextLayout(conversion)
+        
+        FlipioApp.logger.debug(
+            "replaceTypedWordWithNextLayout: completed via select+delete+typing"
         )
         return true
     }
