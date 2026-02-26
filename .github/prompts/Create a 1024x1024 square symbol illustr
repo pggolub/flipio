@@ -1,0 +1,58 @@
+Create a 1024x1024 square symbol illustration.
+
+Subject: image for my macos appliaction called Flipio. The image should display process of flipped keyboard key
+
+Context: standalone symbol/illustration for general use, not an app launcher icon or UI mockup.
+Do not design or imply an app icon, logo plate, badge, or rounded-square container, even if the user prompt mentions "app icon", "logo", "badge", or similar terms.
+Do not draw an icon inside a larger canvas. No outer margins, padding, or separate card background.
+Do not draw any rounded-square tile, card, or container behind the subject.
+The canvas itself is a perfect square with sharp 90° corners; do not simulate rounded-corner app icon masks or device-rounded corners.
+No global drop shadows, long cast shadows, outer glows, or halos around the subject or canvas.
+No UI mockups. No borders, frames, stickers, app plates, or device chrome.
+No text/typography (letters, numbers, monograms). No watermark.
+Not a full photo/portrait/real-world scene. No realistic human faces as the main subject.
+Do not copy or imitate real brand logos, trademarked shapes, or recognizable brand marks.
+
+Archetype (internal decision, do not mention in the output):
+Choose exactly ONE archetype: object_icon, abstract_form_icon, hybrid_icon, or character_icon.
+Characters are optional and must only be used when clearly appropriate.
+
+Archetype guidance:
+- object_icon: a single physical or symbolic object without a face/personality (finance, productivity, utilities, dev tools, dashboards, system apps).
+- abstract_form_icon: pure form/metaphor without literal objects or faces (AI tools, design tools, analytics, experimental products).
+- hybrid_icon: an object with subtle life cues (no face), friendly but restrained (finance+friendly, health, lifestyle).
+- character_icon: a friendly expressive character with a face (kids, games, beginner education, wellness, fun social). Never the default.
+
+Concept:
+Design a single, intentional visual element that represents the app. This can be an object, a form, or a character depending on the archetype.
+Avoid generic logos and generic symbols. Avoid the most literal/obvious metaphor; choose a clear but slightly unexpected metaphor.
+
+Creativity means: unusual material choices, unexpected but clear metaphors, expressive lighting, playful proportions, premium texture decisions.
+Creativity does NOT mean: always adding eyes/faces, always making it cute, always anthropomorphizing objects.
+
+Material:
+Default to an illustration-friendly matte finish (painted polymer, ceramic, paper, or flat vector). Avoid glass/chrome/neon unless explicitly requested.
+Material choice should communicate mood and product category.
+
+Composition:
+Main subject fills 92–98% of the canvas. Strong silhouette. No unnecessary elements.
+
+Lighting:
+Soft, controlled lighting. Minimal specular highlights. No bloom/glow/lens flares. No “3D glass icon” look.
+
+Overall feel:
+Modern, bold, subject-first illustration (not an app icon layout). Creative without being childish. Readable at small sizes.
+Rendering default: clean illustration / 2D or 2.5D, matte finish, subtle shading only.
+
+Technical constraints:
+Square 1:1 aspect ratio.
+Main subject fills 92–98% of the canvas (zoom in; avoid excessive empty space).
+Center/balance the silhouette. Keep critical details within ~5–8% safe area.
+Android-safe: keep critical details within central ~70% (silhouette may extend).
+Background extends to all four edges of the square canvas with straight (non-rounded) corners; keep it clean (low-detail, low-noise).
+Default-look guardrail: avoid inflated glass/chrome/neon/glow/sparkles/lens flare/exaggerated shine unless explicitly requested.
+If generating multiple images: keep the same archetype + dominant material; vary only small details.
+Quality filters (internal):
+Reject if: it reads like a photo/portrait/full scene; it becomes a mascot by default; too many elements hurt clarity; a face appears without choosing character_icon; any rounded-square/card/tile background or app-icon-style container appears behind the subject.
+Accept if: instant read at small size; strong silhouette; intentional material; clean contrast on both light and dark backgrounds.
+Icon QA (internal): blur test (~64px), small-size readability, wallpaper contrast, one focal point.
