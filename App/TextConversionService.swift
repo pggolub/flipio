@@ -177,8 +177,8 @@ final class TextConversionService: @unchecked Sendable {
             "replaceTypedWord: \(original, privacy: .private(mask: .hash)) → \(replacement, privacy: .private(mask: .hash))"
         )
         
-        // Use select-and-delete strategy (works universally across all apps)
-        simulateBackspaceViaSelection(count: original.count)
+        // Delete the original text using app-appropriate strategy
+        deleteTypedText(count: original.count)
 
         // Type the replacement text character by character
         simulateTyping(replacement)
@@ -186,7 +186,7 @@ final class TextConversionService: @unchecked Sendable {
         converter.applyTargetLayout(conversion)
         
         FlipioApp.logger.debug(
-            "replaceTypedWord: completed via select+delete+typing"
+            "replaceTypedWord: completed via delete+typing"
         )
         return true
     }
@@ -205,8 +205,8 @@ final class TextConversionService: @unchecked Sendable {
             "replaceTypedWordWithNextLayout: \(original, privacy: .private(mask: .hash)) → \(replacement, privacy: .private(mask: .hash))"
         )
         
-        // Use select-and-delete strategy (works universally across all apps)
-        simulateBackspaceViaSelection(count: original.count)
+        // Delete the original text using app-appropriate strategy
+        deleteTypedText(count: original.count)
 
         // Type the replacement text character by character
         simulateTyping(replacement)
@@ -214,7 +214,7 @@ final class TextConversionService: @unchecked Sendable {
         converter.applyNextLayout(conversion)
         
         FlipioApp.logger.debug(
-            "replaceTypedWordWithNextLayout: completed via select+delete+typing"
+            "replaceTypedWordWithNextLayout: completed via delete+typing"
         )
         return true
     }
@@ -278,6 +278,49 @@ final class TextConversionService: @unchecked Sendable {
     
     // MARK: - Synthetic key events
     
+    /// Deletes typed text using the appropriate strategy for the current app.
+    /// - simulateBackspaceViaSelection: for OneNote and apps where regular backspace doesn't work
+    /// - simulateBackspace_v2: for Spotlight Search and apps that need Control+Backspace
+    /// - simulateBackspace: default for most apps
+    private func deleteTypedText(count: Int) {
+        guard count > 0 else { return }
+        
+        guard let frontApp = NSWorkspace.shared.frontmostApplication,
+              let bundleId = frontApp.bundleIdentifier else {
+            FlipioApp.logger.debug("deleteTypedText: cannot determine frontmost app, using default backspace")
+            simulateBackspace(count: count)
+            return
+        }
+        
+        // Apps that need select-and-delete strategy (Shift+Left Arrow + Delete)
+        let needsSelectionStrategy = [
+            "com.microsoft.onenote.mac"  // Microsoft OneNote
+            // Add more bundle identifiers here as needed
+        ]
+        
+        // Apps that need Control+Backspace strategy
+        let needsControlBackspace = [
+            "com.apple.Spotlight"  // macOS Spotlight Search
+            // Add more bundle identifiers here as needed
+        ]
+        
+        // Check for apps needing select-and-delete
+        if needsSelectionStrategy.contains(bundleId) {
+            FlipioApp.logger.debug("deleteTypedText: using select-and-delete for \(bundleId)")
+            simulateBackspaceViaSelection(count: count)
+        }
+        // Check for apps needing Control+Backspace
+        else if needsControlBackspace.contains(bundleId) {
+            FlipioApp.logger.debug("deleteTypedText: using Control+Backspace for \(bundleId)")
+            simulateBackspace_v2(count: count)
+        }
+        // Default: regular backspace
+        else {
+            FlipioApp.logger.debug("deleteTypedText: using regular backspace for \(bundleId)")
+            simulateBackspace(count: count)
+        }
+    }
+    
     private func simulateCopy() -> Bool {
         FlipioApp.logger.debug("simulateCopy: sending Cmd+C")
         return simulateKeyCombo(keyCode: CGKeyCode(kVK_ANSI_C), flags: .maskCommand)
@@ -287,6 +330,56 @@ final class TextConversionService: @unchecked Sendable {
         FlipioApp.logger.debug("simulatePaste: sending Cmd+V")
         return simulateKeyCombo(keyCode: CGKeyCode(kVK_ANSI_V), flags: .maskCommand)
     }
+
+    
+     private func simulateBackspace(count: Int) {
+        guard count > 0 else { return }
+        FlipioApp.logger.debug("simulateBackspace: sending \(count) × Backspace")
+        
+        let keyCode = CGKeyCode(kVK_Delete)
+        
+        for _ in 0..<count {
+            guard
+                let down = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true),
+                let up = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
+            else { 
+                FlipioApp.logger.error("simulateBackspace: failed to create CGEvent")
+                continue 
+            }
+            down.flags = []
+            up.flags = []
+            down.post(tap: .cghidEventTap)
+            usleep(10_000)
+            up.post(tap: .cghidEventTap)
+            // usleep(30_000)
+        }
+    }
+
+    private func simulateBackspace_v2(count: Int) {
+        guard count > 0 else { return }
+        FlipioApp.logger.debug("simulateBackspace_v2: sending \(count) × Control+Backspace")
+        
+        let keyCode = CGKeyCode(kVK_Delete)
+        
+        for _ in 0..<count {
+            guard
+                let down = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true),
+                let up = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
+            else { 
+                FlipioApp.logger.error("simulateBackspace_v2: failed to create CGEvent")
+                continue 
+            }
+            
+            down.flags = .maskControl
+            up.flags = .maskControl
+            
+            down.post(tap: .cghidEventTap)
+            usleep(30_000)
+//            up.post(tap: .cghidEventTap)
+//            usleep(30_000)
+        }
+    }
+
 
     /// Selects text using Shift+Left Arrow, then deletes it.
     /// This method works reliably across all applications.
