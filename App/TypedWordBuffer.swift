@@ -76,6 +76,19 @@ final class TypedWordBuffer {
     }
     
     private func extractText(from event: CGEvent) -> String? {
+        // Word-breaking keys reset the buffer even though some produce text
+        let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
+        let wordBreakingKeys: Set<Int> = [
+            kVK_Return, kVK_Tab, kVK_Space, kVK_Escape,
+            kVK_ForwardDelete,
+            kVK_Home, kVK_End, kVK_PageUp, kVK_PageDown,
+            kVK_LeftArrow, kVK_RightArrow, kVK_UpArrow, kVK_DownArrow,
+        ]
+        if wordBreakingKeys.contains(keyCode) {
+            logEvent("word-breaking key", event: event)
+            return nil
+        }
+
         var length = 0
         var chars = [UniChar](repeating: 0, count: 32)
         event.keyboardGetUnicodeString(
@@ -89,14 +102,7 @@ final class TypedWordBuffer {
             return nil
         }
         
-        let text = String(utf16CodeUnits: chars, count: length)
-        let isAlnum = text.unicodeScalars.allSatisfy { CharacterSet.alphanumerics.contains($0) }
-        guard isAlnum else {
-            logEvent("invalid extracted text (non-alphanumeric)", event: event)
-            return nil
-        }
-        
-        return text
+        return String(utf16CodeUnits: chars, count: length)
     }
     
     private func logEvent(_ message: String, event: CGEvent, pid: Int64? = nil) {

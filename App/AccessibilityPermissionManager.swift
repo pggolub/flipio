@@ -33,8 +33,8 @@ class AccessibilityPermissionManager: ObservableObject {
         let trusted = AXIsProcessTrusted()
         checkCount += 1
         
-        let status = trusted ? "GRANTED" : "DENIED"
-//        FlipioApp.logger.debug("Check #\(self.checkCount, privacy: .public): Accessibility permission = \(status, privacy: .public)")
+        //let status = trusted ? "GRANTED" : "DENIED"
+        //FlipioApp.logger.debug("Check #\(self.checkCount, privacy: .public): Accessibility permission = \(status, privacy: .public)")
         
         isAccessibilityGranted = trusted
         

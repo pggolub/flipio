@@ -247,7 +247,7 @@ final class TextConversionService: @unchecked Sendable {
         // Check for Spotlight first (it's not a traditional app)
         if isSpotlightActive() {
             FlipioApp.logger.debug("deleteTypedText: using Control+Backspace for Spotlight")
-            simulateBackspace_v2(count: count)
+            simulateBackspaceWithControl(count: count)
             return
         }
         
@@ -277,7 +277,7 @@ final class TextConversionService: @unchecked Sendable {
         // Check for apps needing Control+Backspace
         else if needsControlBackspace.contains(bundleId) {
             FlipioApp.logger.debug("deleteTypedText: using Control+Backspace for \(bundleId)")
-            simulateBackspace_v2(count: count)
+            simulateBackspaceWithControl(count: count)
         }
         // Default: regular backspace
         else {
@@ -298,9 +298,6 @@ final class TextConversionService: @unchecked Sendable {
 
     
      private func simulateBackspace(count: Int) {
-        guard count > 0 else { return }
-        FlipioApp.logger.debug("simulateBackspace: sending \(count) × Backspace")
-
         for _ in 0..<count {
             KeySimulator.postKeyPress(
                 keyCode: CGKeyCode(kVK_Delete)
@@ -308,17 +305,14 @@ final class TextConversionService: @unchecked Sendable {
         }
     }
 
-    private func simulateBackspace_v2(count: Int) {
-        guard count > 0 else { return }
-        FlipioApp.logger.debug("simulateBackspace_v2: sending \(count) × Control+Backspace")
-
+    private func simulateBackspaceWithControl(count: Int) {
         for _ in 0..<count {
             KeySimulator.postKeyPress(
                 keyCode: CGKeyCode(kVK_Delete),
                 flags: .maskControl
-                //BUG: potential bug here because initial implementation didn't trigger key up
+                //BUG: potential bug here because initial implementation didn't trigger key up. Looks like no
             )
-            usleep(30_000)
+            usleep(10_000)
         }
     }
 
@@ -326,10 +320,6 @@ final class TextConversionService: @unchecked Sendable {
     /// Selects text using Shift+Left Arrow, then deletes it.
     /// This method works reliably across all applications.
     private func simulateBackspaceViaSelection(count: Int) {
-        guard count > 0 else { return }
-        FlipioApp.logger.debug("simulateBackspaceViaSelection: selecting \(count) chars and deleting")
-
-        // Select text by pressing Shift+Left Arrow multiple times
         for _ in 0..<count {
             KeySimulator.postKeyPress(
                 keyCode: CGKeyCode(kVK_LeftArrow),
