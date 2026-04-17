@@ -16,4 +16,4 @@ First public release. Distributed via Homebrew cask (`pavel-golub/flipio` tap).
 - Bundle identifier: `com.flipio.app`.
 - Ad-hoc signed (author is not in the Apple Developer Program). The cask removes the Gatekeeper quarantine attribute after installation.
 - Requires macOS 14.0 (Sonoma) or later.
-- Requires Accessibility permission; grant it in System Settings → Privacy & Security → Accessibility.
+- Requires Accessibility permission; grant it in System Settings → Privacy & Security → Accessibility or at first app start.

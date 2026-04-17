@@ -110,3 +110,4 @@ Carthage/Build/
 *.log
 
 assets.bak/
+flipio.code-workspace
