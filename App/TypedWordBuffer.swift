@@ -1,10 +1,3 @@
-//
-//  TypedWordBuffer.swift
-//  Flipio
-//
-//  Created by Pavel Golub on 02/02/2026.
-//
-
 import AppKit
 import ApplicationServices
 import Carbon.HIToolbox

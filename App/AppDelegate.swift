@@ -1,10 +1,3 @@
-//
-//  AppDelegate.swift
-//  Flipio
-//
-//  Created by Pavel Golub on 13/02/2026.
-//
-
 import SwiftUI
 import AppKit
 import os

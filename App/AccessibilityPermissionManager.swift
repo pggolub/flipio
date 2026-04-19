@@ -1,10 +1,3 @@
-//
-//  AccessibilityPermissionManager.swift
-//  Flipio
-//
-//  Created by Pavel Golub on 14/02/2026.
-//
-
 import SwiftUI
 import Combine
 import ApplicationServices

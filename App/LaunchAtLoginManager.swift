@@ -1,10 +1,3 @@
-//
-//  LaunchAtLoginManager.swift
-//  Flipio
-//
-//  Created by Pavel Golub on 13/02/2026.
-//
-
 import Combine
 import Foundation
 import ServiceManagement
