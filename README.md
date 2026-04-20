@@ -4,14 +4,16 @@
 
 # Flipio
 
-**Instantly fix text typed in the wrong keyboard layout.**
+**Instantly fix mistyped text in the wrong keyboard layout.**
 
-A lightweight macOS menu bar app that converts selected text or the last typed word between keyboard layouts with a single tap of the Option key.
+A lightweight macOS (sitting in Mac OS menu bar) app that converts selected text or the last typed word between keyboard layouts/languages with a single tap of the Option key. 
+
+Modern open source Punto Switcher alternative for macOS.
 
 [![macOS](https://img.shields.io/badge/macOS-14.0%2B-000000?logo=apple&logoColor=white)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Homebrew](https://img.shields.io/badge/Homebrew-tap-FBB040?logo=homebrew&logoColor=white)](https://github.com/pgo-labs/homebrew-flipio)
+[![Homebrew](https://img.shields.io/badge/Homebrew-tap-FBB040?logo=homebrew&logoColor=white)](https://github.com/pavgol/homebrew-flipio)
 
 </div>
 
@@ -21,12 +23,7 @@ A lightweight macOS menu bar app that converts selected text or the last typed w
 
 - ⌨️ **Quick Layout Conversion** — Tap the Option key to convert selected text or the last typed word
 - 🔄 **Bidirectional** — Auto-detects the layout and converts both ways (e.g., English ↔ Russian)
-- 🎯 **Two Conversion Modes**
-  - **Selection Mode** — Select text and tap Option to convert it
-  - **Typed Word Mode** — Just tap Option after typing to convert the last word
-- ♻️ **Multiple Conversions** — Keep tapping Option to toggle back and forth
 - 🧩 **System Integration** — Works with any macOS application
-- 🚀 **Launch at Login** — Optional auto-start on system startup
 - 🪶 **Lightweight** — Runs quietly in your menu bar
 
 ## 📋 Requirements
@@ -39,7 +36,7 @@ A lightweight macOS menu bar app that converts selected text or the last typed w
 ### Homebrew (recommended)
 
 ```bash
-brew tap pgo-labs/flipio
+brew tap pavgol/flipio
 brew install --cask flipio
 ```
 
@@ -49,7 +46,7 @@ brew install --cask flipio
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/pgo-labs/flipio.git
+   git clone https://github.com/pavgol/flipio.git
    cd flipio
    ```
 
@@ -84,14 +81,10 @@ All text processing happens locally on your device. **No data is sent to externa
 
 MIT License — see [LICENSE](LICENSE) for details.
 
-## 👤 Author
-
-**Pavel Golub**
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 💬 Support
 
-If you encounter any issues or have feature requests, please [open an issue](https://github.com/pgo-labs/flipio/issues) on GitHub.
+If you encounter any issues or have feature requests, please [open an issue](https://github.com/pavgol/flipio/issues) on GitHub.
