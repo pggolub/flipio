@@ -42,6 +42,16 @@ brew install --cask flipio
 
 > Flipio is ad-hoc signed (the author is not enrolled in the Apple Developer Program). The cask removes macOS's quarantine attribute after install so the app can launch without Gatekeeper warnings. Review the source before installing if that concerns you.
 
+### Direct download (DMG)
+
+Grab the latest `.dmg` from the [Releases page](https://github.com/pavgol/flipio/releases/latest), open it, and drag Flipio into `/Applications`.
+
+Because the build is ad-hoc signed, macOS Gatekeeper will block it on first launch. Either right-click the app and choose **Open**, or strip the quarantine attribute manually:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Flipio.app
+```
+
 ### From Source
 
 1. Clone the repository:
