@@ -28,6 +28,10 @@ Modern open source Punto Switcher alternative for macOS.
 - 🧩 **System Integration** — Works with any macOS application
 - 🪶 **Lightweight** — Runs quietly in your menu bar
 
+### Plain Text Paste
+
+Press **Command + Shift + V** to paste without formatting.
+
 ## 📋 Requirements
 
 - macOS 14.0 (Sonoma) or later

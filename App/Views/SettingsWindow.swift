@@ -6,6 +6,7 @@ import os
 struct SettingsWindow: View {
     @ObservedObject private var permissionManager = AccessibilityPermissionManager.shared
     @StateObject private var launchAtLoginManager = LaunchAtLoginManager.shared
+    @AppStorage("plainTextPasteEnabled") private var plainTextPasteEnabled = false
 
     private static let appVersion: String = {
         let info = Bundle.main.infoDictionary
@@ -29,7 +30,6 @@ struct SettingsWindow: View {
         VStack(spacing: 0) {
             headerBar
             
-            // Main Content
             Form {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
@@ -39,7 +39,7 @@ struct SettingsWindow: View {
                             .font(.body)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
-                        
+
                         HStack {
                             Text("htgf")
                                 .font(.system(.body, design: .monospaced))
@@ -53,38 +53,56 @@ struct SettingsWindow: View {
                     }
                     .padding(.vertical, 8)
                 }
-                
+
                 Section {
-                    
                     HStack {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Launch at Login")
                                 .font(.system(size: 13))
                                 .foregroundStyle(.primary)
-                            
+
                             Text("Automatically start Flipio when you log in to your Mac.")
                                 .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
-                        
+
                         Spacer()
-                        
+
                         Toggle("", isOn: $launchAtLoginManager.isEnabled)
                             .labelsHidden()
                             .toggleStyle(.switch)
                             .focusable(false)
                     }
-                    
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Paste without formatting")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.primary)
+
+                            Text("Press ⌘ Command + ⇧ Shift + V to paste plain text.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        Spacer()
+
+                        Toggle("Paste without formatting", isOn: $plainTextPasteEnabled)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .focusable(false)
+                    }
                 } header: {
                     Text("General")
                         .font(.headline)
                 }
             }
             .formStyle(.grouped)
+            .scrollDisabled(true)
             .frame(maxHeight: .infinity)
 
-            // Footer note
             HStack(spacing: 8) {
                 Circle()
                     .fill(.green)
@@ -95,7 +113,7 @@ struct SettingsWindow: View {
             }
             .padding(.bottom, 20)
         }
-        .frame(minWidth: 450, minHeight: 550)
+        .frame(minWidth: 450, minHeight: 600)
     }
 
     private var headerBar: some View {

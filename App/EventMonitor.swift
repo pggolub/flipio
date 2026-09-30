@@ -52,6 +52,19 @@ final class EventMonitor {
             FlipioApp.logger.debug("own event detected, ignoring. TODO: never happens but should")
             return
         }
+
+        let shortcutModifiers: CGEventFlags = [.maskCommand, .maskShift, .maskControl, .maskAlternate]
+        if type == .keyDown,
+           event.getIntegerValueField(.keyboardEventKeycode) == 9,
+              event.flags.intersection(shortcutModifiers) == [.maskCommand, .maskShift],
+              UserDefaults.standard.object(forKey: "plainTextPasteEnabled") as? Bool ?? false {
+            event.cancel()
+            shortcutKeyDetector.reset()
+            Task { @MainActor in
+                await PlainTextPasteService.shared.paste()
+            }
+            return
+        }
         
         switch type {
         case .flagsChanged:

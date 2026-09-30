@@ -70,7 +70,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let window = NSWindow(contentViewController: hostingController)
         window.title = "Flipio Settings"
         window.styleMask = [.titled, .closable, .miniaturizable]
-        window.setContentSize(NSSize(width: 450, height: 550))
+        window.setContentSize(NSSize(width: 450, height: 600))
         window.center()
         window.isReleasedWhenClosed = false
         
