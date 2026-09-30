@@ -152,7 +152,7 @@ jobs:
           TAP_PARENT="$(brew --repository)/Library/Taps/pggolub"
           mkdir -p "$TAP_PARENT"
           ln -s "$GITHUB_WORKSPACE/tap" "$TAP_PARENT/homebrew-flipio"
-          brew style --cask pggolub/flipio/flipio
+          brew style --fix --cask pggolub/flipio/flipio
           brew audit --cask --online pggolub/flipio/flipio
 
       - name: Open Homebrew update PR
