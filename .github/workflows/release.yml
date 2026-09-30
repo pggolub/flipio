@@ -95,7 +95,7 @@ jobs:
             SHA256SUMS
           generate_release_notes: true
 
-  homebrew-pr:
+  homebrew-update:
     needs: release
     if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.release.result == 'success') && !contains(inputs.release_tag || github.ref_name, '-') }}
     runs-on: macos-latest
@@ -109,7 +109,7 @@ jobs:
           TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           if [ -z "$TAP_TOKEN" ]; then
-            echo "Set HOMEBREW_TAP_TOKEN with Contents and Pull requests write access to pggolub/homebrew-flipio." >&2
+            echo "Set HOMEBREW_TAP_TOKEN with Contents write access to pggolub/homebrew-flipio." >&2
             exit 1
           fi
 
@@ -165,21 +165,17 @@ jobs:
           brew style --fix --cask pggolub/flipio/flipio
           brew audit --cask --online pggolub/flipio/flipio
 
-      - name: Open Homebrew update PR
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          path: tap
-          base: main
-          branch: release/flipio-${{ steps.artifact.outputs.version }}
-          add-paths: Casks/flipio.rb
-          commit-message: "Update Flipio to ${{ steps.artifact.outputs.version }}"
-          title: "Update Flipio to ${{ steps.artifact.outputs.version }}"
-          body: |
-            Updates Flipio to ${{ steps.artifact.outputs.version }}.
-
-            Release: https://github.com/${{ github.repository }}/releases/tag/${{ env.RELEASE_TAG }}
-            SHA-256: `${{ steps.artifact.outputs.sha256 }}`
-
-            The checksum was calculated from the published DMG. Homebrew style and online audit passed.
-            Merge this PR to make the version available through `brew upgrade --cask flipio`.
+      - name: Publish Homebrew update
+        working-directory: tap
+        env:
+          VERSION: ${{ steps.artifact.outputs.version }}
+        run: |
+          git add Casks/flipio.rb
+          if git diff --cached --quiet; then
+            echo "Homebrew cask is already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update Flipio to ${VERSION}"
+          git push origin HEAD:main
