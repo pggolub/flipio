@@ -144,9 +144,9 @@ final class TextConversionService: @unchecked Sendable {
         FlipioApp.logger.notice(
             "replaceTypedWordWithNextLayout: \(original, privacy: .public) → \(replacement, privacy: .public)"
         )
-        
+
         // Delete the original text using app-appropriate strategy
-        deleteTypedText(count: original.count)
+        guard deleteTypedText(count: original.count) else { return false }
 
         // Type the replacement text character by character
         KeySimulator.postUnicodeString(replacement)
@@ -241,21 +241,21 @@ final class TextConversionService: @unchecked Sendable {
     /// - simulateBackspaceViaSelection: for OneNote and apps where regular backspace doesn't work
     /// - simulateBackspace_v2: for Spotlight Search and apps that need Control+Backspace
     /// - simulateBackspace: default for most apps
-    private func deleteTypedText(count: Int) {
-        guard count > 0 else { return }
+    private func deleteTypedText(count: Int) -> Bool {
+        guard count > 0 else { return true }
         
         // Check for Spotlight first (it's not a traditional app)
         if isSpotlightActive() {
             FlipioApp.logger.debug("deleteTypedText: using Control+Backspace for Spotlight")
             simulateBackspaceWithControl(count: count)
-            return
+            return true
         }
         
         guard let frontApp = NSWorkspace.shared.frontmostApplication,
               let bundleId = frontApp.bundleIdentifier else {
             FlipioApp.logger.debug("deleteTypedText: cannot determine frontmost app, using default backspace")
             simulateBackspace(count: count)
-            return
+            return true
         }
         
         // Apps that need select-and-delete strategy (Shift+Left Arrow + Delete)
@@ -270,7 +270,15 @@ final class TextConversionService: @unchecked Sendable {
         ]
         
         // Check for apps needing select-and-delete
-        if needsSelectionStrategy.contains(bundleId) {
+        if bundleId == "com.google.Chrome" {
+            guard KeySimulator.postKeyPress(keyCode: CGKeyCode(kVK_Space)) else {
+                FlipioApp.logger.error("deleteTypedText: failed to synthesize Space for Chrome")
+                return false
+            }
+            FlipioApp.logger.debug("deleteTypedText: using Space then backspace for Chrome")
+            simulateBackspace(count: count + 1)
+        }
+        else if needsSelectionStrategy.contains(bundleId) {
             FlipioApp.logger.debug("deleteTypedText: using select-and-delete for \(bundleId)")
             simulateBackspaceViaSelection(count: count)
         }
@@ -284,6 +292,7 @@ final class TextConversionService: @unchecked Sendable {
             FlipioApp.logger.debug("deleteTypedText: using regular backspace for \(bundleId)")
             simulateBackspace(count: count)
         }
+        return true
     }
     
     private func simulateCopy() -> Bool {
