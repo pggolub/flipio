@@ -4,12 +4,19 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing stable release to promote to Homebrew (e.g. v1.0.5)"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
   release:
+    if: ${{ github.event_name == 'push' }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -90,10 +97,12 @@ jobs:
 
   homebrew-pr:
     needs: release
-    if: ${{ !contains(github.ref_name, '-') }}
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.release.result == 'success') && !contains(inputs.release_tag || github.ref_name, '-') }}
     runs-on: macos-latest
     permissions:
       contents: read
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
     steps:
       - name: Check tap credentials
         env:
@@ -117,13 +126,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Expected a stable release tag such as v1.0.5." >&2
             exit 1
           fi
+          VERSION="${RELEASE_TAG#v}"
           mkdir -p "$RUNNER_TEMP/flipio-release"
-          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
             --pattern "Flipio-${VERSION}.dmg" --dir "$RUNNER_TEMP/flipio-release" --clobber
           SHA256=$(shasum -a 256 "$RUNNER_TEMP/flipio-release/Flipio-${VERSION}.dmg" | awk '{print $1}')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -148,6 +157,7 @@ jobs:
       - name: Validate cask
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_GITHUB_API_TOKEN: ${{ github.token }}
         run: |
           TAP_PARENT="$(brew --repository)/Library/Taps/pggolub"
           mkdir -p "$TAP_PARENT"
@@ -168,7 +178,7 @@ jobs:
           body: |
             Updates Flipio to ${{ steps.artifact.outputs.version }}.
 
-            Release: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+            Release: https://github.com/${{ github.repository }}/releases/tag/${{ env.RELEASE_TAG }}
             SHA-256: `${{ steps.artifact.outputs.sha256 }}`
 
             The checksum was calculated from the published DMG. Homebrew style and online audit passed.
