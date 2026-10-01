@@ -269,13 +269,18 @@ final class TextConversionService: @unchecked Sendable {
             // Add bundle identifiers here as needed
         ]
         
-        // Check for apps needing select-and-delete
-        if bundleId == "com.google.Chrome" {
+        let needsSpaceBeforeBackspace = [
+            "com.google.Chrome",
+            "com.brave.Browser",
+            "com.apple.Safari"
+        ]
+
+        if needsSpaceBeforeBackspace.contains(bundleId) {
             guard KeySimulator.postKeyPress(keyCode: CGKeyCode(kVK_Space)) else {
-                FlipioApp.logger.error("deleteTypedText: failed to synthesize Space for Chrome")
+                FlipioApp.logger.error("deleteTypedText: failed to synthesize Space for \(bundleId)")
                 return false
             }
-            FlipioApp.logger.debug("deleteTypedText: using Space then backspace for Chrome")
+            FlipioApp.logger.debug("deleteTypedText: using Space then backspace for \(bundleId)")
             simulateBackspace(count: count + 1)
         }
         else if needsSelectionStrategy.contains(bundleId) {
