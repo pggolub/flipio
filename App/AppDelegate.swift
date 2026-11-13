@@ -17,6 +17,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.imagePosition = .imageLeading
         }
         
+        // Start the updater at launch
+        _ = UpdateManager.shared
+
         // Create the menu
         setupMenu()
         
