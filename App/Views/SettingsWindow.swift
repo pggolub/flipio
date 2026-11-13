@@ -6,6 +6,7 @@ import os
 struct SettingsWindow: View {
     @ObservedObject private var permissionManager = AccessibilityPermissionManager.shared
     @StateObject private var launchAtLoginManager = LaunchAtLoginManager.shared
+    @ObservedObject private var updateManager = UpdateManager.shared
     @AppStorage("plainTextPasteEnabled") private var plainTextPasteEnabled = false
 
     private static let appVersion: String = {
@@ -94,6 +95,48 @@ struct SettingsWindow: View {
                             .toggleStyle(.switch)
                             .focusable(false)
                     }
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Automatically check for updates")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.primary)
+
+                            Text("Flipio checks for new versions in the background.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        Spacer()
+
+                        Toggle("Automatically check for updates", isOn: Binding(
+                            get: { updateManager.automaticallyChecksForUpdates },
+                            set: { updateManager.automaticallyChecksForUpdates = $0 }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .focusable(false)
+                    }
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Software Update")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.primary)
+
+                            Text("Version \(Self.appVersion)")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Button("Check for Updates…") {
+                            updateManager.checkForUpdates()
+                        }
+                        .disabled(!updateManager.canCheckForUpdates)
+                    }
                 } header: {
                     Text("General")
                         .font(.headline)
@@ -113,7 +156,7 @@ struct SettingsWindow: View {
             }
             .padding(.bottom, 20)
         }
-        .frame(minWidth: 450, minHeight: 600)
+        .frame(minWidth: 450, minHeight: 700)
     }
 
     private var headerBar: some View {

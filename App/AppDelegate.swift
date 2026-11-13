@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import os
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     private var statusItem: NSStatusItem!
     private var settingsWindow: NSWindow?
     
@@ -44,6 +44,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         settingsItem.target = self
         settingsItem.image = nil
         menu.addItem(settingsItem)
+
+        // Check for Updates menu item
+        let updateItem = NSMenuItem(
+            title: "Check for Updates…",
+            action: #selector(checkForUpdates),
+            keyEquivalent: ""
+        )
+        updateItem.target = self
+        menu.addItem(updateItem)
         
         menu.addItem(NSMenuItem.separator())
         
@@ -73,7 +82,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let window = NSWindow(contentViewController: hostingController)
         window.title = "Flipio Settings"
         window.styleMask = [.titled, .closable, .miniaturizable]
-        window.setContentSize(NSSize(width: 450, height: 600))
+        window.setContentSize(NSSize(width: 450, height: 700))
         window.center()
         window.isReleasedWhenClosed = false
         
@@ -82,6 +91,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
     
+    @objc private func checkForUpdates() {
+        UpdateManager.shared.checkForUpdates()
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(checkForUpdates) {
+            return UpdateManager.shared.canCheckForUpdates
+        }
+        return true
+    }
+
     @objc private func quitApp() {
         EventMonitor.shared.stop()
         NSApplication.shared.terminate(nil)
