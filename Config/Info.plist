@@ -5,7 +5,7 @@
 	<key>SUFeedURL</key>
 	<string>https://github.com/pggolub/flipio/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>REPLACE_WITH_PUBLIC_KEY</string>
+	<string>jAxAqWJYtZbzDYAalnuJtBe63wEHY3FD5b90HFXnW4E=</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUEnableInstallerLauncherService</key>
