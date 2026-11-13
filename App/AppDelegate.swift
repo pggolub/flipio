@@ -82,7 +82,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         let window = NSWindow(contentViewController: hostingController)
         window.title = "Flipio Settings"
         window.styleMask = [.titled, .closable, .miniaturizable]
-        window.setContentSize(NSSize(width: 450, height: 700))
+        window.setContentSize(NSSize(width: 450, height: 650))
         window.center()
         window.isReleasedWhenClosed = false
         

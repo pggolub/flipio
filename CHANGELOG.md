@@ -5,7 +5,7 @@ All notable changes to Flipio are documented here. Format loosely follows [Keep 
 ## [Unreleased]
 
 ### Added
-- Automatic updates via Sparkle: "Automatically check for updates" toggle and "Check for Updates…" (menu bar menu and Settings).
+- Automatic updates via Sparkle: "Automatically check for updates" toggle and "Check for Updates…" in the menu bar menu.
 
 ### Notes
 - Versions up to 1.0.7 have no updater; install the first Sparkle release manually (or via `brew upgrade`).

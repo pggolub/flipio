@@ -77,7 +77,7 @@ xattr -dr com.apple.quarantine /Applications/Flipio.app
 
 ## 🔄 Updates
 
-Flipio checks for updates in the background and offers to install them. Turn this off in **Settings ▸ Automatically check for updates**, or check manually with **Check for Updates…** (menu bar menu or Settings). Homebrew users can still run `brew upgrade --cask flipio`.
+Flipio checks for updates in the background and offers to install them. Turn this off in **Settings ▸ Automatically check for updates**, or check manually with **Check for Updates…** in the menu bar menu. Homebrew users can still run `brew upgrade --cask flipio`.
 
 ## 🔍 Troubleshooting
 

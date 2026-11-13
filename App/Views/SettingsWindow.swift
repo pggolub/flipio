@@ -118,25 +118,6 @@ struct SettingsWindow: View {
                         .toggleStyle(.switch)
                         .focusable(false)
                     }
-
-                    HStack {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Software Update")
-                                .font(.system(size: 13))
-                                .foregroundStyle(.primary)
-
-                            Text("Version \(Self.appVersion)")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-
-                        Button("Check for Updates…") {
-                            updateManager.checkForUpdates()
-                        }
-                        .disabled(!updateManager.canCheckForUpdates)
-                    }
                 } header: {
                     Text("General")
                         .font(.headline)
@@ -156,7 +137,7 @@ struct SettingsWindow: View {
             }
             .padding(.bottom, 20)
         }
-        .frame(minWidth: 450, minHeight: 700)
+        .frame(minWidth: 450, minHeight: 650)
     }
 
     private var headerBar: some View {
