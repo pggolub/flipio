@@ -87,13 +87,58 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Verify embedded frameworks are signed
+        run: codesign --verify --deep --strict build/export/Flipio.app
+
+      - name: Generate Sparkle appcast
+        if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+          SPARKLE_VERSION: "2.10.1" # keep in sync with the SwiftPM pin
+        run: |
+          if [ -z "$SPARKLE_ED_PRIVATE_KEY" ]; then
+            echo "Set SPARKLE_ED_PRIVATE_KEY (output of Sparkle's generate_keys -x)." >&2
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/sparkle"
+          curl -fsSL "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" \
+            | tar -xJ -C "$RUNNER_TEMP/sparkle"
+          SIG=$(printf '%s' "$SPARKLE_ED_PRIVATE_KEY" \
+            | "$RUNNER_TEMP/sparkle/bin/sign_update" --ed-key-file - "Flipio-${VERSION}.dmg")
+          # SIG looks like: sparkle:edSignature="..." length="..."
+          case "$SIG" in
+            sparkle:edSignature=*) ;;
+            *) echo "sign_update failed: $SIG" >&2; exit 1 ;;
+          esac
+          cat > appcast.xml <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+            <channel>
+              <title>Flipio</title>
+              <item>
+                <title>Version ${VERSION}</title>
+                <sparkle:version>${{ github.run_number }}</sparkle:version>
+                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+                <sparkle:releaseNotesLink>https://github.com/${{ github.repository }}/releases/tag/${GITHUB_REF_NAME}</sparkle:releaseNotesLink>
+                <enclosure url="https://github.com/${{ github.repository }}/releases/download/${GITHUB_REF_NAME}/Flipio-${VERSION}.dmg"
+                           type="application/octet-stream" ${SIG} />
+              </item>
+            </channel>
+          </rss>
+          EOF
+          xmllint --noout appcast.xml
+          cat appcast.xml
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             Flipio-*.dmg
             SHA256SUMS
+            appcast.xml
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
   homebrew-update:
     needs: release
