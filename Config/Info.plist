@@ -8,6 +8,10 @@
 	<string>REPLACE_WITH_PUBLIC_KEY</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
+	<key>SUAllowsAutomaticUpdates</key>
+	<false/>
 	<key>SUSendSystemProfile</key>
 	<false/>
 </dict>

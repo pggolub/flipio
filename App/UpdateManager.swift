@@ -9,7 +9,7 @@ final class UpdateManager: NSObject, ObservableObject {
 
     @Published private(set) var canCheckForUpdates = false
 
-    private let controller: SPUStandardUpdaterController
+    private var controller: SPUStandardUpdaterController!
     private var cancellable: AnyCancellable?
 
     var automaticallyChecksForUpdates: Bool {
@@ -21,12 +21,12 @@ final class UpdateManager: NSObject, ObservableObject {
     }
 
     private override init() {
+        super.init()
         controller = SPUStandardUpdaterController(
             startingUpdater: true,
             updaterDelegate: nil,
-            userDriverDelegate: nil
+            userDriverDelegate: self
         )
-        super.init()
         cancellable = controller.updater
             .publisher(for: \.canCheckForUpdates)
             .receive(on: DispatchQueue.main)
@@ -37,5 +37,19 @@ final class UpdateManager: NSObject, ObservableObject {
         // Flipio is an accessory (menu bar) app; bring Sparkle's dialog to the front.
         NSApp.activate(ignoringOtherApps: true)
         controller.checkForUpdates(nil)
+    }
+}
+
+extension UpdateManager: SPUStandardUserDriverDelegate {
+    nonisolated var supportsGentleScheduledUpdateReminders: Bool { true }
+
+    // Scheduled (background) checks would otherwise show their alert behind other apps.
+    nonisolated func standardUserDriverWillHandleShowingUpdate(
+        _ handleShowingUpdate: Bool,
+        forUpdate update: SUAppcastItem,
+        state: SPUUserUpdateState
+    ) {
+        guard handleShowingUpdate else { return }
+        Task { @MainActor in NSApp.activate(ignoringOtherApps: true) }
     }
 }
