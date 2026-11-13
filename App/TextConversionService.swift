@@ -227,9 +227,16 @@ final class TextConversionService: @unchecked Sendable {
         
         // Look for Spotlight window in the window list
         for window in windowList {
-            if let ownerName = window[kCGWindowOwnerName as String] as? String,
-               ownerName == "Spotlight" {
+            guard let ownerName = window[kCGWindowOwnerName as String] as? String else { continue }
+            // macOS 26 and earlier: owned by "Spotlight".
+            if ownerName == "Spotlight" {
                 FlipioApp.logger.debug("isSpotlightActive: Spotlight window detected")
+                return true
+            }
+            // macOS 27+: Spotlight UI is hosted by the "Siri" process in a floating (layer > 0) window.
+            if ownerName == "Siri",
+               let layer = window[kCGWindowLayer as String] as? Int, layer > 0 {
+                FlipioApp.logger.debug("isSpotlightActive: Spotlight (Siri-hosted) window detected")
                 return true
             }
         }
