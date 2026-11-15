@@ -19,7 +19,7 @@ jobs:
     if: ${{ github.event_name == 'push' }}
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Select newest Xcode
         run: |
@@ -88,7 +88,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             Flipio-*.dmg
@@ -114,7 +114,7 @@ jobs:
           fi
 
       - name: Check out Homebrew tap
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: pggolub/homebrew-flipio
           ref: main
