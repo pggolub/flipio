@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		AB8AA00E2F3107FC00DB0DCD /* CGEventSupervisor in Frameworks */ = {isa = PBXBuildFile; productRef = AB8AA00D2F3107FC00DB0DCD /* CGEventSupervisor */; };
+	AB8AA0102F3107FC00DB0DCD /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = AB8AA00F2F3107FC00DB0DCD /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AB8AA00E2F3107FC00DB0DCD /* CGEventSupervisor in Frameworks */,
+				AB8AA0102F3107FC00DB0DCD /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +73,7 @@
 			name = Flipio;
 			packageProductDependencies = (
 				AB8AA00D2F3107FC00DB0DCD /* CGEventSupervisor */,
+				AB8AA00F2F3107FC00DB0DCD /* Sparkle */,
 			);
 			productName = Flipio;
 			productReference = AB86D1592F2E4B8E0071F3ED /* Flipio.app */;
@@ -102,6 +105,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				AB8AA00C2F3107FC00DB0DCD /* XCRemoteSwiftPackageReference "CGEventSupervisor" */,
+				AB8AA0112F3107FC00DB0DCD /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AB86D15A2F2E4B8E0071F3ED /* Products */;
@@ -269,6 +273,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -304,6 +309,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -355,6 +361,14 @@
 				revision = d20d7aa8e008a1cc8dd2e26b027118a0fcfc2f96;
 			};
 		};
+		AB8AA0112F3107FC00DB0DCD /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = exactVersion;
+				version = 2.10.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -362,6 +376,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AB8AA00C2F3107FC00DB0DCD /* XCRemoteSwiftPackageReference "CGEventSupervisor" */;
 			productName = CGEventSupervisor;
+		};
+		AB8AA00F2F3107FC00DB0DCD /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AB8AA0112F3107FC00DB0DCD /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -2,6 +2,15 @@
 
 All notable changes to Flipio are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project uses [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Automatic updates via Sparkle: "Automatically check for updates" toggle and "Check for Updates…" in the menu bar menu.
+
+### Notes
+- Versions up to 1.0.7 have no updater; install the first Sparkle release manually (or via `brew upgrade`).
+- Self-updated ad-hoc signed builds may need Accessibility permission re-granted; result of the real update test to be recorded here.
+
 ## [1.0.4] - 2026-04-24
 
 First stable release.
