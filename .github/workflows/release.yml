@@ -36,7 +36,6 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          xcrun agvtool new-marketing-version "$VERSION"
           xcrun agvtool new-version -all "${{ github.run_number }}"
 
       - name: Archive (universal)
@@ -52,6 +51,7 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM= \
             ENABLE_APP_SANDBOX=NO \
+            MARKETING_VERSION="$VERSION" \
             ARCHS="arm64 x86_64" \
             ONLY_ACTIVE_ARCH=NO
 
