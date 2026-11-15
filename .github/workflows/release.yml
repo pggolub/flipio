@@ -220,6 +220,8 @@ jobs:
           TAP_PARENT="$(brew --repository)/Library/Taps/pggolub"
           mkdir -p "$TAP_PARENT"
           ln -s "$GITHUB_WORKSPACE/tap" "$TAP_PARENT/homebrew-flipio"
+          # Recent Homebrew refuses to load casks from untrusted taps.
+          brew trust --tap pggolub/flipio
           brew style --fix --cask pggolub/flipio/flipio
           brew audit --cask --online pggolub/flipio/flipio
 
