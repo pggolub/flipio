@@ -8,7 +8,7 @@ All notable changes to Flipio are documented here. Format loosely follows [Keep 
 - Automatic updates via Sparkle: "Automatically check for updates" toggle and "Check for Updates…" in the menu bar menu.
 
 ### Fixed
-- Layout sometimes switched back to the original one right after conversion. Flipio now selects the target layout directly (with verification and retry) before retyping the word, instead of simulating the system ⌃Space shortcut. The layout-change HUD is no longer shown.
+- Layout sometimes switched back to the original one right after conversion. The simulated ⌃Space shortcut now releases Control after Space (as a person does), and the switch is verified afterwards: a reverted switch is retried once, and the layout is selected directly if the shortcut lands elsewhere.
 - Conversion could retype old, already-deleted text (e.g. after ⌘A + ⌫). The typed-word buffer now resets on any ⌘/⌃/⌥ key combination and on navigation, function and media keys.
 
 ### Notes

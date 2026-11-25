@@ -1,3 +1,4 @@
+import Carbon.HIToolbox
 import CoreGraphics
 import os
 
@@ -28,6 +29,59 @@ enum KeySimulator {
         usleep(10_000)
         keyUp.post(tap: .cghidEventTap)
 
+        return true
+    }
+
+    /// Posts a shortcut the way a person types it: modifiers go down as separate key events,
+    /// the main key is pressed and released, then modifiers are released after a gap.
+    /// Releasing the modifier and the main key together makes macOS revert the
+    /// "Select the previous input source" (⌃Space) switch ~100–500 ms later (FB24297598).
+    @discardableResult
+    static func postKeyChord(
+        keyCode: CGKeyCode,
+        modifiers: CGEventFlags,
+        releaseGapMicroseconds: useconds_t = 30_000
+    ) -> Bool {
+        let modifierKeys: [(flag: CGEventFlags, keyCode: CGKeyCode)] = [
+            (.maskControl, CGKeyCode(kVK_Control)),
+            (.maskAlternate, CGKeyCode(kVK_Option)),
+            (.maskShift, CGKeyCode(kVK_Shift)),
+            (.maskCommand, CGKeyCode(kVK_Command)),
+        ].filter { modifiers.contains($0.flag) }
+
+        let source = CGEventSource(stateID: .combinedSessionState)
+
+        func post(_ key: CGKeyCode, down: Bool, flags: CGEventFlags) -> Bool {
+            guard let event = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: down)
+            else {
+                FlipioApp.logger.error(
+                    "KeySimulator.postKeyChord: failed to create CGEvent for keyCode=\(key)")
+                return false
+            }
+            event.flags = flags
+            event.setIntegerValueField(.eventSourceUserData, value: FlipioSyntheticEventUserData)
+            event.post(tap: .cghidEventTap)
+            return true
+        }
+
+        var activeFlags: CGEventFlags = []
+        for modifier in modifierKeys {
+            activeFlags.insert(modifier.flag)
+            guard post(modifier.keyCode, down: true, flags: activeFlags) else { return false }
+            usleep(10_000)
+        }
+
+        guard post(keyCode, down: true, flags: activeFlags) else { return false }
+        usleep(10_000)
+        guard post(keyCode, down: false, flags: activeFlags) else { return false }
+
+        usleep(releaseGapMicroseconds)
+
+        for modifier in modifierKeys.reversed() {
+            activeFlags.remove(modifier.flag)
+            guard post(modifier.keyCode, down: false, flags: activeFlags) else { return false }
+            usleep(10_000)
+        }
         return true
     }
 

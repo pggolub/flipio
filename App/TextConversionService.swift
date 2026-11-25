@@ -145,15 +145,13 @@ final class TextConversionService: @unchecked Sendable {
             "replaceTypedWordWithNextLayout: \(original, privacy: .public) → \(replacement, privacy: .public)"
         )
 
-        // Switch layout first so the focused app receives the replacement in the new layout.
-        converter.applyTargetLayout(conversion.targetLayout)
-
         // Delete the original text using app-appropriate strategy
         guard deleteTypedText(count: original.count) else { return false }
 
         // Type the replacement text character by character
         KeySimulator.postUnicodeString(replacement)
 
+        converter.applyTargetLayout(conversion.targetLayout)
         typedWordBuffer.set(conversion.text)
         
         FlipioApp.logger.debug(

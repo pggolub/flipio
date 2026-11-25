@@ -3,6 +3,7 @@
 //  and input source switching.
 //
 
+import AppKit
 import Carbon.HIToolbox
 import Foundation
 import os
@@ -73,41 +74,191 @@ struct SystemInputSourceProvider {
         return nextSource(after: currentID, in: sources)
     }
 
-    private static let activationMaxAttempts = 10
-    private static let activationRetryDelay: useconds_t = 20_000
+    // MARK: - Switching via the system shortcut
 
-    /// Activates the given input source via TISSelectInputSource and verifies that it became
-    /// current, retrying a few times if the system has not applied it yet.
-    /// The simulated system shortcut (⌃Space) is deliberately not used: macOS may revert it
-    /// ~100–500 ms later when the modifier and key are released together (FB24297598).
-    /// Call this before typing the replacement so the focused app already receives input
-    /// in the new layout and keeps it.
-    @discardableResult
-    func activateInputSource(id target: KeyboardInputSourceInfo) -> Bool {
+    // Symbolic hotkey IDs for input source switching (com.apple.symbolichotkeys):
+    //   60 = "Select the previous input source"  (default: ⌃Space)
+    //   61 = "Select next source in Input menu"  (default: ⌃⌥Space)
+    // macOS versions differ on which ID gets ⌃Space; we try both.
+    private static let hotkeyIDs = [60, 61]
+
+    // macOS may revert a shortcut switch 100–600 ms later (FB24297598), so the result is
+    // checked only after that window has passed.
+    private static let switchVerificationDelay: TimeInterval = 0.7
+    private static let switchRetryLimit = 1
+
+    private static let tisMaxAttempts = 10
+    private static let tisRetryDelay: useconds_t = 20_000
+
+    /// Activates the given input source.
+    /// Prefers simulating the system "Select the previous input source" shortcut because
+    /// macOS treats it as a user switch: the system HUD is shown and, with "Automatically
+    /// switch to a document's input source" enabled, the focused document remembers the new
+    /// layout. A TISSelectInputSource call from another process changes only the global
+    /// state, so the document restores its old layout when it regains focus.
+    /// The result is verified asynchronously; a reverted switch is retried, and if the
+    /// shortcut lands on a different source the target is selected via TIS as a fallback.
+    func activateInputSource(id target: KeyboardInputSourceInfo) {
         FlipioApp.logger.debug("activateInputSource: activating '\(target.id, privacy: .public)'")
-        if currentSourceID() == target.id {
+        let originalID = currentSourceID()
+        if originalID == target.id {
             FlipioApp.logger.debug("activateInputSource: '\(target.id, privacy: .public)' is already active")
-            return true
+            return
         }
 
-        for attempt in 1...Self.activationMaxAttempts {
+        guard let hotkey = Self.inputSourceHotkey() else {
+            FlipioApp.logger.warning(
+                "activateInputSource: no enabled input source shortcut for IDs \(Self.hotkeyIDs, privacy: .public) — using TISSelectInputSource (no HUD)"
+            )
+            selectViaTIS(target)
+            return
+        }
+
+        Self.post(hotkey)
+        verifySwitch(
+            to: target,
+            from: originalID,
+            hotkey: hotkey,
+            frontmostPID: NSWorkspace.shared.frontmostApplication?.processIdentifier,
+            retriesLeft: Self.switchRetryLimit
+        )
+    }
+
+    private func verifySwitch(
+        to target: KeyboardInputSourceInfo,
+        from originalID: String?,
+        hotkey: HotkeyParams,
+        frontmostPID: pid_t?,
+        retriesLeft: Int
+    ) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.switchVerificationDelay) {
+            let currentID = currentSourceID()
+            if currentID == target.id {
+                FlipioApp.logger.debug("activateInputSource: '\(target.id, privacy: .public)' confirmed")
+                return
+            }
+            // The user moved to another app; its layout is not ours to change.
+            if NSWorkspace.shared.frontmostApplication?.processIdentifier != frontmostPID {
+                FlipioApp.logger.debug(
+                    "activateInputSource: frontmost app changed, skipping verification (current='\(currentID ?? "nil", privacy: .public)')"
+                )
+                return
+            }
+            if currentID == originalID, retriesLeft > 0 {
+                FlipioApp.logger.warning(
+                    "activateInputSource: switch to '\(target.id, privacy: .public)' was reverted — resending shortcut"
+                )
+                Self.post(hotkey)
+                verifySwitch(
+                    to: target, from: originalID, hotkey: hotkey,
+                    frontmostPID: frontmostPID, retriesLeft: retriesLeft - 1)
+                return
+            }
+            FlipioApp.logger.warning(
+                "activateInputSource: shortcut did not reach '\(target.id, privacy: .public)' (current='\(currentID ?? "nil", privacy: .public)') — falling back to TISSelectInputSource"
+            )
+            selectViaTIS(target)
+        }
+    }
+
+    private static func post(_ hotkey: HotkeyParams) {
+        FlipioApp.logger.info(
+            "activateInputSource: posting shortcut keyCode=\(hotkey.keyCode, privacy: .public) modifiers=0x\(String(hotkey.modifiers, radix: 16), privacy: .public)"
+        )
+        KeySimulator.postKeyChord(
+            keyCode: CGKeyCode(hotkey.keyCode),
+            modifiers: carbonModifiersToCGEventFlags(hotkey.modifiers)
+        )
+    }
+
+    private static func inputSourceHotkey() -> HotkeyParams? {
+        for id in hotkeyIDs {
+            if let params = readSystemHotkey(id: id) {
+                return params
+            }
+        }
+        return nil
+    }
+
+    /// Converts Carbon-style modifier mask (as stored in com.apple.symbolichotkeys) to CGEventFlags.
+    private static func carbonModifiersToCGEventFlags(_ carbonMods: Int) -> CGEventFlags {
+        var flags: CGEventFlags = []
+        if carbonMods & 0x02_0000 != 0 { flags.insert(.maskShift) }
+        if carbonMods & 0x04_0000 != 0 { flags.insert(.maskControl) }
+        if carbonMods & 0x08_0000 != 0 { flags.insert(.maskAlternate) }
+        if carbonMods & 0x10_0000 != 0 { flags.insert(.maskCommand) }
+        return flags
+    }
+
+    private struct HotkeyParams {
+        let keyCode: Int
+        let modifiers: Int
+    }
+
+    /// Reads the configured shortcut for a symbolic hotkey ID from
+    /// com.apple.symbolichotkeys preferences (via cfprefsd).
+    /// Requires the `com.apple.security.temporary-exception.shared-preference.read-only`
+    /// sandbox entitlement for `com.apple.symbolichotkeys`.
+    private static func readSystemHotkey(id: Int) -> HotkeyParams? {
+        guard
+            let raw = CFPreferencesCopyAppValue(
+                "AppleSymbolicHotKeys" as CFString,
+                "com.apple.symbolichotkeys" as CFString
+            ) as? [String: Any]
+        else {
+            FlipioApp.logger.warning(
+                "readSystemHotkey(\(id, privacy: .public)): could not read com.apple.symbolichotkeys (sandbox may block cross-app prefs)"
+            )
+            return nil
+        }
+        guard let entry = raw[String(id)] as? [String: Any] else {
+            FlipioApp.logger.info("readSystemHotkey(\(id, privacy: .public)): not present")
+            return nil
+        }
+        guard let enabled = entry["enabled"] as? Bool, enabled else {
+            FlipioApp.logger.info("readSystemHotkey(\(id, privacy: .public)): disabled")
+            return nil
+        }
+        guard
+            let value = entry["value"] as? [String: Any],
+            let parameters = value["parameters"] as? [Any],
+            parameters.count >= 3,
+            let keyCode = parameters[1] as? Int,
+            let modifiers = parameters[2] as? Int
+        else {
+            FlipioApp.logger.warning(
+                "readSystemHotkey(\(id, privacy: .public)): unexpected parameters structure: \(entry, privacy: .public)")
+            return nil
+        }
+        FlipioApp.logger.debug(
+            "readSystemHotkey(\(id, privacy: .public)): found keyCode=\(keyCode, privacy: .public) modifiers=0x\(String(modifiers, radix: 16), privacy: .public)"
+        )
+        return HotkeyParams(keyCode: keyCode, modifiers: modifiers)
+    }
+
+    // MARK: TIS fallback
+
+    /// Selects the source directly and verifies it, retrying briefly. Shows no HUD, and the
+    /// focused document does not remember the change (see `activateInputSource`).
+    @discardableResult
+    private func selectViaTIS(_ target: KeyboardInputSourceInfo) -> Bool {
+        for attempt in 1...Self.tisMaxAttempts {
             let status = TISSelectInputSource(target.source)
             if status != noErr {
                 FlipioApp.logger.error(
-                    "activateInputSource: TISSelectInputSource failed OSStatus=\(status, privacy: .public) (attempt \(attempt, privacy: .public))"
+                    "selectViaTIS: TISSelectInputSource failed OSStatus=\(status, privacy: .public) (attempt \(attempt, privacy: .public))"
                 )
             }
             if currentSourceID() == target.id {
                 FlipioApp.logger.info(
-                    "activateInputSource: '\(target.id, privacy: .public)' active after \(attempt, privacy: .public) attempt(s)"
+                    "selectViaTIS: '\(target.id, privacy: .public)' active after \(attempt, privacy: .public) attempt(s)"
                 )
                 return true
             }
-            usleep(Self.activationRetryDelay)
+            usleep(Self.tisRetryDelay)
         }
-
         FlipioApp.logger.error(
-            "activateInputSource: '\(target.id, privacy: .public)' not active after \(Self.activationMaxAttempts, privacy: .public) attempts (current='\(currentSourceID() ?? "nil", privacy: .public)')"
+            "selectViaTIS: '\(target.id, privacy: .public)' not active after \(Self.tisMaxAttempts, privacy: .public) attempts (current='\(currentSourceID() ?? "nil", privacy: .public)')"
         )
         return false
     }

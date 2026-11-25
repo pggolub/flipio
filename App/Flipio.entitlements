@@ -13,5 +13,9 @@
 		<string>com.flipio.app-spks</string>
 		<string>com.flipio.app-spki</string>
 	</array>
+	<key>com.apple.security.temporary-exception.shared-preference.read-only</key>
+	<array>
+		<string>com.apple.symbolichotkeys</string>
+	</array>
 </dict>
 </plist>
