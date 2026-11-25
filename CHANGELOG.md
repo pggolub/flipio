@@ -7,6 +7,9 @@ All notable changes to Flipio are documented here. Format loosely follows [Keep 
 ### Added
 - Automatic updates via Sparkle: "Automatically check for updates" toggle and "Check for Updates…" in the menu bar menu.
 
+### Fixed
+- Layout sometimes switched back to the original one right after conversion. Flipio now selects the target layout directly (with verification and retry) before retyping the word, instead of simulating the system ⌃Space shortcut. The layout-change HUD is no longer shown.
+
 ### Notes
 - Versions up to 1.0.7 have no updater; install the first Sparkle release manually (or via `brew upgrade`).
 - Self-updated ad-hoc signed builds may need Accessibility permission re-granted; result of the real update test to be recorded here.
