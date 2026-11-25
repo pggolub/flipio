@@ -34,6 +34,7 @@ Regression for the layout reverting to the original one after conversion (see CH
 |---|-------|-----------------|
 | 2.1 | Type `ghbdtn`, tap ⌥, wait 1 s, type `vbh` | Text is `приветмир`; menu bar shows Russian the whole time |
 | 2.2 | Repeat 2.1 typing quickly (no pause after ⌥) | Same as 2.1, no Latin letters appear |
+| 2.3 | In System Settings → Keyboard → Text Input → Edit, turn on **Automatically switch to a document's input source**. Type `ghbdtn`, tap ⌥, wait 1 s, switch to another app (⌘Tab) and back to the same TextEdit document, type `vbh` | Text is `приветмир`; layout is still Russian after returning, without any extra key presses. Log shows `activateInputSource: '…Russian…' confirmed` |
 
 ## 3. Buffer resets on shortcuts and modified keys
 
