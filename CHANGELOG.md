@@ -8,6 +8,7 @@ All notable changes to Flipio are documented here. Format loosely follows [Keep 
 - Automatic updates via Sparkle: "Automatically check for updates" toggle and "Check for Updates…" in the menu bar menu.
 
 ### Fixed
+- Accessibility permission was lost after every update because releases were ad-hoc signed. Releases are now signed with a stable self-signed certificate. Users must re-grant the permission once (remove Flipio with **−** in System Settings ▸ Privacy & Security ▸ Accessibility, then add it again with **+**).
 - Layout sometimes switched back to the original one right after conversion. The simulated ⌃Space shortcut now releases Control after Space (as a person does), and the switch is verified afterwards: a reverted switch is retried once, and the layout is selected directly if the shortcut lands elsewhere.
 - Conversion could retype old, already-deleted text (e.g. after ⌘A + ⌫). The typed-word buffer now resets on any ⌘/⌃/⌥ key combination and on navigation, function and media keys.
 

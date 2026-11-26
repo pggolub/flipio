@@ -81,6 +81,12 @@ Flipio checks for updates in the background and offers to install them. Turn thi
 
 ## 🔍 Troubleshooting
 
+### Accessibility permission lost after an update
+
+Releases are now signed with a stable certificate, so the permission persists across updates. The first update to such a release (and any update from an older ad-hoc signed build) requires re-granting it once: open **System Settings ▸ Privacy & Security ▸ Accessibility**, select Flipio and remove it with the **−** button, then add it again with the **+** button and make sure it is turned on.
+
+### Debug logs
+
 Watch OS events with:
 
 ```bash
