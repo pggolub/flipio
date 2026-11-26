@@ -1,10 +1,10 @@
 //
 //  System input source detection, keyboard layout pair building,
-//  and input source switching (with system HUD support).
+//  and input source switching.
 //
 
+import AppKit
 import Carbon.HIToolbox
-import CoreGraphics
 import Foundation
 import os
 
@@ -74,54 +74,110 @@ struct SystemInputSourceProvider {
         return nextSource(after: currentID, in: sources)
     }
 
-    /// Activates the input source with the given ID.
-    /// Prefers the system-hotkey path (which shows the HUD) via `switchToNext()`, cycling
-    /// up to `selectableSources().count` times until the desired source becomes current.
-    /// Falls back to direct TISSelectInputSource if the hotkey never reaches the target.
-    func activateInputSource(id target: KeyboardInputSourceInfo) {
-        FlipioApp.logger.debug("activateInputSource: activating '\(target.id, privacy: .public)'")
-        // No-op if already current.
-        if currentSourceID() == target.id {
-            FlipioApp.logger.debug("activateInputSource: '\(target.id, privacy: .public)' is already active")
-            return
-        }
-        //TODO: now two system layouts are supported only.
-        //it is a challenge to get the current system layout after switch done via hotkey
-        //hotkey switch is preferred because it shows the HUD and when user returns back to the edit area then
-        //the layout is restored
-        switchToNextInputSource()
-    }
-
-    // MARK: - Cycling switch with system HUD
+    // MARK: - Switching via the system shortcut
 
     // Symbolic hotkey IDs for input source switching (com.apple.symbolichotkeys):
     //   60 = "Select the previous input source"  (default: ⌃Space)
     //   61 = "Select next source in Input menu"  (default: ⌃⌥Space)
     // macOS versions differ on which ID gets ⌃Space; we try both.
     private static let hotkeyIDs = [60, 61]
-    private static var lastSelectedIndex: Int?
 
-    /// Switches to the next input source in the list.
-    /// Prefers simulating the system shortcut (hotkey IDs 60/61) so the window server
-    /// shows the layout-change HUD. Falls back to direct TISSelectInputSource when the
-    /// shortcut cannot be read (e.g. sandbox blocks cfprefsd cross-app prefs access).
-    func switchToNextInputSource() {
-        for id in Self.hotkeyIDs {
-            if let params = Self.readSystemHotkey(id: id) {
-                FlipioApp.logger.info(
-                    "switchToNextInputSource: CGEvent path via hotkey ID \(id, privacy: .public) — keyCode=\(params.keyCode, privacy: .public) modifiers=0x\(String(params.modifiers, radix: 16), privacy: .public)"
-                )
-                KeySimulator.postKeyPress(
-                    keyCode: CGKeyCode(params.keyCode),
-                    flags: Self.carbonModifiersToCGEventFlags(params.modifiers)
+    // macOS may revert a shortcut switch 100–600 ms later (FB24297598), so the result is
+    // checked only after that window has passed.
+    private static let switchVerificationDelay: TimeInterval = 0.7
+    private static let switchRetryLimit = 1
+
+    private static let tisMaxAttempts = 10
+    private static let tisRetryDelay: useconds_t = 20_000
+
+    /// Activates the given input source.
+    /// Prefers simulating the system "Select the previous input source" shortcut because
+    /// macOS treats it as a user switch: the system HUD is shown and, with "Automatically
+    /// switch to a document's input source" enabled, the focused document remembers the new
+    /// layout. A TISSelectInputSource call from another process changes only the global
+    /// state, so the document restores its old layout when it regains focus.
+    /// The result is verified asynchronously; a reverted switch is retried, and if the
+    /// shortcut lands on a different source the target is selected via TIS as a fallback.
+    func activateInputSource(id target: KeyboardInputSourceInfo) {
+        FlipioApp.logger.debug("activateInputSource: activating '\(target.id, privacy: .public)'")
+        let originalID = currentSourceID()
+        if originalID == target.id {
+            FlipioApp.logger.debug("activateInputSource: '\(target.id, privacy: .public)' is already active")
+            return
+        }
+
+        guard let hotkey = Self.inputSourceHotkey() else {
+            FlipioApp.logger.warning(
+                "activateInputSource: no enabled input source shortcut for IDs \(Self.hotkeyIDs, privacy: .public) — using TISSelectInputSource (no HUD)"
+            )
+            selectViaTIS(target)
+            return
+        }
+
+        Self.post(hotkey)
+        verifySwitch(
+            to: target,
+            from: originalID,
+            hotkey: hotkey,
+            frontmostPID: NSWorkspace.shared.frontmostApplication?.processIdentifier,
+            retriesLeft: Self.switchRetryLimit
+        )
+    }
+
+    private func verifySwitch(
+        to target: KeyboardInputSourceInfo,
+        from originalID: String?,
+        hotkey: HotkeyParams,
+        frontmostPID: pid_t?,
+        retriesLeft: Int
+    ) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.switchVerificationDelay) {
+            let currentID = currentSourceID()
+            if currentID == target.id {
+                FlipioApp.logger.debug("activateInputSource: '\(target.id, privacy: .public)' confirmed")
+                return
+            }
+            // The user moved to another app; its layout is not ours to change.
+            if NSWorkspace.shared.frontmostApplication?.processIdentifier != frontmostPID {
+                FlipioApp.logger.debug(
+                    "activateInputSource: frontmost app changed, skipping verification (current='\(currentID ?? "nil", privacy: .public)')"
                 )
                 return
             }
+            if currentID == originalID, retriesLeft > 0 {
+                FlipioApp.logger.warning(
+                    "activateInputSource: switch to '\(target.id, privacy: .public)' was reverted — resending shortcut"
+                )
+                Self.post(hotkey)
+                verifySwitch(
+                    to: target, from: originalID, hotkey: hotkey,
+                    frontmostPID: frontmostPID, retriesLeft: retriesLeft - 1)
+                return
+            }
+            FlipioApp.logger.warning(
+                "activateInputSource: shortcut did not reach '\(target.id, privacy: .public)' (current='\(currentID ?? "nil", privacy: .public)') — falling back to TISSelectInputSource"
+            )
+            selectViaTIS(target)
         }
-        FlipioApp.logger.warning(
-            "switchToNext: no enabled hotkey found for IDs \(Self.hotkeyIDs, privacy: .public) — falling back to direct TISSelectInputSource (no HUD)"
+    }
+
+    private static func post(_ hotkey: HotkeyParams) {
+        FlipioApp.logger.info(
+            "activateInputSource: posting shortcut keyCode=\(hotkey.keyCode, privacy: .public) modifiers=0x\(String(hotkey.modifiers, radix: 16), privacy: .public)"
         )
-        switchToNextViaTIS()
+        KeySimulator.postKeyChord(
+            keyCode: CGKeyCode(hotkey.keyCode),
+            modifiers: carbonModifiersToCGEventFlags(hotkey.modifiers)
+        )
+    }
+
+    private static func inputSourceHotkey() -> HotkeyParams? {
+        for id in hotkeyIDs {
+            if let params = readSystemHotkey(id: id) {
+                return params
+            }
+        }
+        return nil
     }
 
     /// Converts Carbon-style modifier mask (as stored in com.apple.symbolichotkeys) to CGEventFlags.
@@ -156,20 +212,11 @@ struct SystemInputSourceProvider {
             return nil
         }
         guard let entry = raw[String(id)] as? [String: Any] else {
-            let enabledIDs = raw.compactMap { k, v -> String? in
-                guard let d = v as? [String: Any], (d["enabled"] as? Bool) == true else {
-                    return nil
-                }
-                return k
-            }.sorted { (Int($0) ?? 0) < (Int($1) ?? 0) }
-            FlipioApp.logger.warning(
-                "readSystemHotkey(\(id, privacy: .public)): ID \(id, privacy: .public) not present — enabled hotkey IDs in prefs: \(enabledIDs, privacy: .public)"
-            )
+            FlipioApp.logger.info("readSystemHotkey(\(id, privacy: .public)): not present")
             return nil
         }
         guard let enabled = entry["enabled"] as? Bool, enabled else {
-            FlipioApp.logger.info(
-                "readSystemHotkey(\(id, privacy: .public)): hotkey \(id, privacy: .public) exists but is disabled — entry: \(entry, privacy: .public)")
+            FlipioApp.logger.info("readSystemHotkey(\(id, privacy: .public)): disabled")
             return nil
         }
         guard
@@ -189,45 +236,31 @@ struct SystemInputSourceProvider {
         return HotkeyParams(keyCode: keyCode, modifiers: modifiers)
     }
 
-    // MARK: TIS fallback path
+    // MARK: TIS fallback
 
-    private func switchToNextViaTIS() {
-        let inputSourceList = allSources().filter { isSelectable($0) }
-        FlipioApp.logger.debug(
-            "switchToNextViaTIS: \(inputSourceList.count, privacy: .public) selectable sources found")
-        guard !inputSourceList.isEmpty else {
-            FlipioApp.logger.warning("switchToNextViaTIS: no selectable input sources")
-            return
-        }
-
-        let nextIndex: Int
-        if let last = Self.lastSelectedIndex {
-            nextIndex = (last + 1) % inputSourceList.count
-            FlipioApp.logger.debug(
-                "switchToNextViaTIS: advancing from cached index \(last, privacy: .public) → \(nextIndex, privacy: .public)")
-        } else {
-            if let currentSource = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
-                let currentIndex = inputSourceList.firstIndex(where: { $0 == currentSource })
-            {
-                nextIndex = (currentIndex + 1) % inputSourceList.count
-                FlipioApp.logger.debug(
-                    "switchToNextViaTIS: first call, current index \(currentIndex, privacy: .public) → \(nextIndex, privacy: .public)")
-            } else {
-                nextIndex = 0
-                FlipioApp.logger.debug(
-                    "switchToNextViaTIS: first call, current source not in list, defaulting to index 0"
+    /// Selects the source directly and verifies it, retrying briefly. Shows no HUD, and the
+    /// focused document does not remember the change (see `activateInputSource`).
+    @discardableResult
+    private func selectViaTIS(_ target: KeyboardInputSourceInfo) -> Bool {
+        for attempt in 1...Self.tisMaxAttempts {
+            let status = TISSelectInputSource(target.source)
+            if status != noErr {
+                FlipioApp.logger.error(
+                    "selectViaTIS: TISSelectInputSource failed OSStatus=\(status, privacy: .public) (attempt \(attempt, privacy: .public))"
                 )
             }
+            if currentSourceID() == target.id {
+                FlipioApp.logger.info(
+                    "selectViaTIS: '\(target.id, privacy: .public)' active after \(attempt, privacy: .public) attempt(s)"
+                )
+                return true
+            }
+            usleep(Self.tisRetryDelay)
         }
-        let result = TISSelectInputSource(inputSourceList[nextIndex])
-        if result == noErr {
-            FlipioApp.logger.info(
-                "switchToNextViaTIS: switched to index \(nextIndex, privacy: .public) (OSStatus=\(result, privacy: .public))")
-        } else {
-            FlipioApp.logger.error(
-                "switchToNextViaTIS: TISSelectInputSource failed OSStatus=\(result, privacy: .public))")
-        }
-        Self.lastSelectedIndex = nextIndex
+        FlipioApp.logger.error(
+            "selectViaTIS: '\(target.id, privacy: .public)' not active after \(Self.tisMaxAttempts, privacy: .public) attempts (current='\(currentSourceID() ?? "nil", privacy: .public)')"
+        )
+        return false
     }
 
     private func isSelectable(_ source: TISInputSource) -> Bool {

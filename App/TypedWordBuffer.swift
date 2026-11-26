@@ -33,8 +33,18 @@ final class TypedWordBuffer {
             return
         }
 
-        // Handle backspace/delete key
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+
+        // Any ⌘/⌃/⌥ combination (⌘A, ⌘V, ⌃K, ⌥⌫, ⌥-symbols, ...) may change the text in ways
+        // the buffer cannot track, so the buffer no longer matches the document.
+        if !event.flags.intersection([.maskCommand, .maskControl, .maskAlternate]).isEmpty {
+            logEvent("modifier shortcut", event: event, pid: targetPid)
+            reset(reason: "modifier shortcut")
+            pendingReset = false
+            return
+        }
+
+        // Handle backspace/delete key
         if keyCode == kVK_Delete {
             if !buffer.isEmpty {
                 buffer.removeLast()
@@ -78,15 +88,23 @@ final class TypedWordBuffer {
         return buffer
     }
 
+    // Navigation, editing, function and media keys move the caret or change focus/text.
+    private static let wordBreakingKeys: Set<Int> = [
+        kVK_Return, kVK_ForwardDelete,
+        kVK_Home, kVK_End, kVK_PageUp, kVK_PageDown,
+        kVK_LeftArrow, kVK_RightArrow, kVK_UpArrow, kVK_DownArrow,
+        kVK_F1, kVK_F2, kVK_F3, kVK_F4, kVK_F5, kVK_F6, kVK_F7, kVK_F8, kVK_F9, kVK_F10,
+        kVK_F11, kVK_F12, kVK_F13, kVK_F14, kVK_F15, kVK_F16, kVK_F17, kVK_F18, kVK_F19, kVK_F20,
+        kVK_VolumeUp, kVK_VolumeDown, kVK_Mute, kVK_JIS_Eisu,
+        0x6C, 0x6E,  // unnamed function-row codes (0x6E: context menu)
+        0x83,  // Launchpad
+        0xB3,  // fn / Globe
+    ]
+
     private func extractText(from event: CGEvent) -> String? {
         // Word-breaking keys reset the buffer even though some produce text
         let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
-        let wordBreakingKeys: Set<Int> = [
-            kVK_Return, kVK_ForwardDelete,
-            kVK_Home, kVK_End, kVK_PageUp, kVK_PageDown,
-            kVK_LeftArrow, kVK_RightArrow, kVK_UpArrow, kVK_DownArrow,
-        ]
-        if wordBreakingKeys.contains(keyCode) {
+        if Self.wordBreakingKeys.contains(keyCode) {
             logEvent("word-breaking key", event: event)
             return nil
         }
