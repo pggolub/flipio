@@ -112,3 +112,4 @@ Carthage/Build/
 assets.bak/
 flipio.code-workspace
 .idea/
+flipio-signing.p12
