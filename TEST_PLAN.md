@@ -2,6 +2,8 @@
 
 Manual regression scenarios for typed-word conversion. Run them before each release and after changes to [TypedWordBuffer.swift](App/TypedWordBuffer.swift), [TextConversionService.swift](App/TextConversionService.swift), [EventMonitor.swift](App/EventMonitor.swift) or [SystemInputSourceProvider.swift](App/SystemInputSourceProvider.swift).
 
+Cases 1.1–1.4 and 2.1 are also automated for the VS Code editor in [E2ETests/](E2ETests/README.md) (`E2ETests/run.sh`).
+
 ## Setup
 
 - Input sources: **U.S.** (or ABC) and **Russian** (e.g. Russian – PC). No other keyboard layouts enabled.
@@ -81,3 +83,17 @@ In every scenario below, the expected log line is `typedBuffer: reset (modifier 
 | 6.3 | Press ⌥ together with another key (e.g. ⌥←) | No conversion is triggered by the Option release |
 | 6.4 | Empty document, no selection, tap ⌥ | System beep, nothing changes |
 | 6.5 | Select `ghbdtn` with the mouse, tap ⌥ | Selection converts to `привет` (selection mode) |
+
+## 7. App-specific deletion strategies
+
+Flipio deletes the typed word differently in some apps (see `deleteTypedText` in [TextConversionService.swift](App/TextConversionService.swift)). A failure usually shows up as leftover characters, an extra space, or the replacement typed next to the original word.
+
+| # | Steps | Expected result |
+|---|-------|-----------------|
+| 7.1 | **Spotlight**: press ⌘Space, type `ghbdtn`, tap ⌥ | Search field contains exactly `привет`; results update for the new text. Log shows `deleteTypedText: using Control+Backspace for Spotlight` |
+| 7.2 | **Spotlight**: after 7.1, tap ⌥ again | Search field contains exactly `ghbdtn` |
+| 7.3 | **Spotlight**: type `hello ghbdtn`, tap ⌥ | Search field contains `hello привет` |
+| 7.4 | **Chrome** address bar: click it, type `ghbdtn`, tap ⌥ | Address bar contains exactly `привет` with no trailing space; no autocomplete suggestion is accepted. Log shows `deleteTypedText: using Space then backspace for com.google.Chrome` |
+| 7.5 | **Chrome** page text field (e.g. a search box on a web page): type `hello ghbdtn`, tap ⌥ | Field contains exactly `hello привет` with no extra space |
+| 7.6 | **Chrome**: after 7.5, tap ⌥ again | Field contains exactly `hello ghbdtn` |
+| 7.7 | Repeat 7.4–7.6 in **Safari** and **Brave** | Same results; the log shows the matching bundle ID |

@@ -112,3 +112,8 @@ Carthage/Build/
 assets.bak/
 flipio.code-workspace
 .idea/
+
+##############################
+# End-to-end tests
+##############################
+E2ETests/.run/
