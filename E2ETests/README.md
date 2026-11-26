@@ -11,7 +11,7 @@ Currently automated (VS Code editor): **1.1–1.4** and **2.1** (repeated 10 tim
 - Exactly two keyboard layouts enabled: **U.S.** (or ABC) and **Russian**.
 - **Select the previous input source** shortcut enabled (System Settings → Keyboard → Keyboard Shortcuts → Input Sources).
 - Caps Lock off.
-- **Accessibility** permission for the app you run the tests from (Terminal, iTerm, or VS Code if you use its integrated terminal), and for the Flipio build under test. A Debug build at a new path needs its own grant.
+- **Accessibility** permission for the app you run the tests from (Terminal, iTerm, or VS Code if you use its integrated terminal), and for the Flipio build under test. A Debug build at a new path needs its own grant (Flipio asks on launch). `run.sh` prompts for the terminal's permission and opens the settings pane if it is missing; enable the terminal there and re-run.
 
 These are checked at start (see `Preflight.swift`). If any fails, the problems are printed and the tests are skipped.
 

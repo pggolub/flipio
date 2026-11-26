@@ -26,6 +26,20 @@ stop_flipio() {
 }
 
 # Remember the Flipio the user was running so it can be restored afterwards.
+# The terminal running this script needs Accessibility to post keystrokes. Trigger the
+# system prompt (and open the settings pane) if it is missing, then ask for a re-run.
+ensure_accessibility() {
+    local trusted
+    trusted=$(swift -e 'import ApplicationServices
+print(AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary))' 2>/dev/null)
+    [ "$trusted" = "true" ] && return
+    open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+    echo "Accessibility permission is required for this terminal app." >&2
+    echo "Enable it in System Settings > Privacy & Security > Accessibility, then re-run ./run.sh." >&2
+    exit 1
+}
+ensure_accessibility
+
 PREVIOUS_FLIPIO=""
 for pid in $(flipio_pids); do
     PREVIOUS_FLIPIO=$(ps -o command= -p "$pid" | sed -E 's#(.*\.app)/Contents/MacOS/Flipio.*#\1#')
@@ -60,5 +74,5 @@ done
 sleep 1
 
 echo "==> Running tests (do not touch the keyboard or mouse)"
-swift test --no-parallel "$@"
+swift test --no-parallel --disable-xctest "$@"
 exit $?

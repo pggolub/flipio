@@ -4,7 +4,7 @@ import AppKit
 /// Nothing is ever saved; `close()` kills this instance only (it is targeted by process ID).
 @MainActor
 public final class VSCodeScreen {
-    public nonisolated static let bundleID = "com.microsoft.VSCodeScreen"
+    public nonisolated static let bundleID = "com.microsoft.VSCode"
 
     public let pid: pid_t
     private let profile: URL

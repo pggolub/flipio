@@ -3,6 +3,7 @@ import Foundation
 /// Locations inside `E2ETests/`.
 public enum Paths {
     public static let root = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()  // Support
         .deletingLastPathComponent()  // E2EKit
         .deletingLastPathComponent()  // Sources
         .deletingLastPathComponent()  // E2ETests

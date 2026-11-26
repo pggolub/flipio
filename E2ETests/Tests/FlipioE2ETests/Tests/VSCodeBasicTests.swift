@@ -17,11 +17,14 @@ struct ConversionCase: Sendable, CustomTestStringConvertible {
     "VS Code – basic",
     .serialized,
     .tags(.vscode),
-    .enabled(if: Preflight.passed, "Preflight checks failed: \(Preflight.problems.joined(separator: "; "))"),
     .timeLimit(.minutes(1))
 )
 struct VSCodeBasicTests {
     let flipio = FlipioProbe()
+
+    init() throws {
+        try #require(Preflight.passed, "Preflight checks failed: \(Preflight.problems.joined(separator: "; "))")
+    }
 
     @Test(
         "Typed-word conversion",
