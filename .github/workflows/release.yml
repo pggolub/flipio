@@ -62,7 +62,25 @@ jobs:
             -exportPath build/export \
             -exportOptionsPlist ExportOptions.plist
 
-      - name: Ad-hoc codesign
+      - name: Import signing certificate
+        env:
+          SIGNING_CERT_P12_BASE64: ${{ secrets.SIGNING_CERT_P12_BASE64 }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+        run: |
+          KC="$RUNNER_TEMP/signing.keychain-db"
+          KC_PASS=$(uuidgen)
+          echo "$SIGNING_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KC_PASS" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KC_PASS" "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$SIGNING_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KC_PASS" "$KC"
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          # Self-signed cert is not "valid" by policy, so don't use -v here.
+          security find-identity -p codesigning "$KC" | grep -q "Flipio Self-Signed"
+
+      - name: Codesign with stable identity
         run: |
           APP=build/export/Flipio.app
           SPK="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
@@ -74,11 +92,11 @@ jobs:
             "$SPK/Autoupdate" \
             "$SPK/Updater.app" \
             "$APP/Contents/Frameworks/Sparkle.framework"; do
-            codesign --force --options=runtime --sign - "$item"
+            codesign --force --options=runtime --sign "Flipio Self-Signed" "$item"
           done
           codesign --force --options=runtime \
             --entitlements App/Flipio.entitlements \
-            --sign - "$APP"
+            --sign "Flipio Self-Signed" "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
           # Sparkle's updater tool must not be sandboxed or it cannot replace the app.
           if codesign -d --entitlements - "$SPK/Autoupdate" 2>&1 | grep -q "app-sandbox"; then

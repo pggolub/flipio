@@ -117,3 +117,5 @@ flipio.code-workspace
 # End-to-end tests
 ##############################
 E2ETests/.run/
+
+flipio-signing.p12
