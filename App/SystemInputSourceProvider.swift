@@ -103,6 +103,7 @@ struct SystemInputSourceProvider {
         let originalID = currentSourceID()
         if originalID == target.id {
             FlipioApp.logger.debug("activateInputSource: '\(target.id, privacy: .public)' is already active")
+            TestHooks.layoutVerified(.alreadyActive)
             return
         }
 
@@ -111,6 +112,7 @@ struct SystemInputSourceProvider {
                 "activateInputSource: no enabled input source shortcut for IDs \(Self.hotkeyIDs, privacy: .public) — using TISSelectInputSource (no HUD)"
             )
             selectViaTIS(target)
+            TestHooks.layoutVerified(.noHotkey)
             return
         }
 
@@ -131,10 +133,12 @@ struct SystemInputSourceProvider {
         frontmostPID: pid_t?,
         retriesLeft: Int
     ) {
+        let shortcutPresses = 1 + Self.switchRetryLimit - retriesLeft
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.switchVerificationDelay) {
             let currentID = currentSourceID()
             if currentID == target.id {
                 FlipioApp.logger.debug("activateInputSource: '\(target.id, privacy: .public)' confirmed")
+                TestHooks.layoutVerified(.confirmed, shortcutPresses: shortcutPresses)
                 return
             }
             // The user moved to another app; its layout is not ours to change.
@@ -142,6 +146,7 @@ struct SystemInputSourceProvider {
                 FlipioApp.logger.debug(
                     "activateInputSource: frontmost app changed, skipping verification (current='\(currentID ?? "nil", privacy: .public)')"
                 )
+                TestHooks.layoutVerified(.skipped, shortcutPresses: shortcutPresses)
                 return
             }
             if currentID == originalID, retriesLeft > 0 {
@@ -158,6 +163,7 @@ struct SystemInputSourceProvider {
                 "activateInputSource: shortcut did not reach '\(target.id, privacy: .public)' (current='\(currentID ?? "nil", privacy: .public)') — falling back to TISSelectInputSource"
             )
             selectViaTIS(target)
+            TestHooks.layoutVerified(.fallback, shortcutPresses: shortcutPresses)
         }
     }
 

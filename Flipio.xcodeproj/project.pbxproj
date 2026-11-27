@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		AB8AA00E2F3107FC00DB0DCD /* CGEventSupervisor in Frameworks */ = {isa = PBXBuildFile; productRef = AB8AA00D2F3107FC00DB0DCD /* CGEventSupervisor */; };
-	AB8AA0102F3107FC00DB0DCD /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = AB8AA00F2F3107FC00DB0DCD /* Sparkle */; };
+		AB8AA0102F3107FC00DB0DCD /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = AB8AA00F2F3107FC00DB0DCD /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */

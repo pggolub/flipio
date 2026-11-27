@@ -44,14 +44,15 @@ final class TextConversionService: @unchecked Sendable {
                 "Attempting typed-word conversion for \(word, privacy: .public)"
             )
             
-            let _ = replaceTypedWordWithNextLayout(original: word)
-            
+            let isConverted = replaceTypedWordWithNextLayout(original: word)
+            TestHooks.conversionFinished(selectionMode: false, success: isConverted)
         }
         // selection text conversion
         else {
             FlipioApp.logger.info("Text buffer is empty, using selection mode")
             
             let isConverted = convertAndReplace()
+            TestHooks.conversionFinished(selectionMode: true, success: isConverted)
             
             if !isConverted {
                 FlipioApp.logger.notice("No conversion possible - playing system beep")
