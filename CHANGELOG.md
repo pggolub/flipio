@@ -4,6 +4,8 @@ All notable changes to Flipio are documented here. Format loosely follows [Keep 
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-27
+
 ### Added
 - Automatic updates via Sparkle: "Automatically check for updates" toggle and "Check for Updates…" in the menu bar menu.
 
