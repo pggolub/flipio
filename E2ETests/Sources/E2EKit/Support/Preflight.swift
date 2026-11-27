@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Carbon.HIToolbox
+import notify
 import os
 
 /// Environment checks run once before the suites. Problems are logged and the
@@ -32,7 +33,10 @@ public enum Preflight {
         if flipio.isEmpty {
             problems.append("Flipio is not running (start it with run.sh)")
         } else if !flipio.contains(where: { hasTestHooks($0.processIdentifier) }) {
-            problems.append("Flipio is running without -TestHooksEnabled YES (start it with run.sh)")
+            problems.append(
+                "Flipio is not reporting live test hooks. Run ./run.sh without FLIPIO_APP to build "
+                    + "the current sources, or rebuild/install Flipio and launch it with -TestHooksEnabled YES"
+            )
         }
 
         let layouts = InputSource.enabledLayouts()
@@ -59,9 +63,21 @@ public enum Preflight {
         return problems
     }
 
-    private static func hasTestHooks(_ pid: pid_t) -> Bool {
-        guard let result = try? Shell.run("/bin/ps", ["-o", "command=", "-p", String(pid)]) else { return false }
-        return result.output.contains("-TestHooksEnabled YES")
+    static func hasTestHooks(_ pid: pid_t) -> Bool {
+        var token: Int32 = 0
+        let registrationStatus = notify_register_check("\(FlipioProbe.readyName).\(pid)", &token)
+        guard registrationStatus == NOTIFY_STATUS_OK else {
+            logger.error("Test hook readiness registration failed (status \(registrationStatus))")
+            return false
+        }
+        defer { notify_cancel(token) }
+        var state: UInt64 = 0
+        let stateStatus = notify_get_state(token, &state)
+        guard stateStatus == NOTIFY_STATUS_OK else {
+            logger.error("Test hook readiness read failed (status \(stateStatus))")
+            return false
+        }
+        return state == UInt64(pid)
     }
 
     private static func inputSourceShortcutEnabled() -> Bool {

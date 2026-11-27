@@ -24,6 +24,7 @@ public struct LayoutVerification: Sendable, CustomStringConvertible {
 /// Create it before triggering a conversion so no signal is missed.
 public final class FlipioProbe: @unchecked Sendable {
     public static let bundleID = "com.flipio.app"
+    static let readyName = "com.flipio.test.ready"
     static let conversionFinishedName = "com.flipio.test.conversionFinished"
     static let layoutVerifiedName = "com.flipio.test.layoutVerified"
 

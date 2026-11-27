@@ -6,9 +6,9 @@ public let E2EDriverEventMarker: Int64 = 0x4532_4554  // 'E2ET'
 /// Marker Flipio puts on its own synthetic events (see FlipioSyntheticEventUserData).
 let FlipioEventMarker: Int64 = 0x464C_4950  // 'FLIP'
 
-public enum Key {
+public enum Key: Sendable {
     case delete, forwardDelete, returnKey, tab, escape, space
-    case left, right, up, down, home, end
+    case left, right, up, down, home, end, pageUp, pageDown, f5
 
     var keyCode: CGKeyCode {
         switch self {
@@ -24,6 +24,9 @@ public enum Key {
         case .down: return CGKeyCode(kVK_DownArrow)
         case .home: return CGKeyCode(kVK_Home)
         case .end: return CGKeyCode(kVK_End)
+        case .pageUp: return CGKeyCode(kVK_PageUp)
+        case .pageDown: return CGKeyCode(kVK_PageDown)
+        case .f5: return CGKeyCode(kVK_F5)
         }
     }
 }
@@ -45,8 +48,19 @@ public enum Keyboard {
         (.maskShift, CGKeyCode(kVK_Shift)),
     ]
 
-    public static func type(_ text: String) async throws {
+    /// The ⌥ symbol emits an Option tap; `afterOptionTap` can wait for its effect.
+    public static func type(
+        _ text: String,
+        afterOptionTap: (() async throws -> Void)? = nil
+    ) async throws {
         for character in text {
+            if character == "⌥" {
+                try await tapOption()
+                if let afterOptionTap {
+                    try await afterOptionTap()
+                }
+                continue
+            }
             guard let stroke = USLayout.stroke(for: character) else {
                 throw E2EError.failed("No U.S. key produces '\(character)'")
             }
@@ -73,6 +87,28 @@ public enum Keyboard {
         try post(keyCode: CGKeyCode(kVK_Option), down: true, flags: .maskAlternate)
         try await Task.sleep(for: optionTapHold)
         try post(keyCode: CGKeyCode(kVK_Option), down: false, flags: [])
+        try await Task.sleep(for: interKeyDelay)
+    }
+
+    /// Holds Option alone for `duration`, which is too long for Flipio to treat as a tap.
+    public static func holdOption(for duration: Duration) async throws {
+        try post(keyCode: CGKeyCode(kVK_Option), down: true, flags: .maskAlternate)
+        try await Task.sleep(for: duration)
+        try post(keyCode: CGKeyCode(kVK_Option), down: false, flags: [])
+        try await Task.sleep(for: interKeyDelay)
+    }
+
+    /// Clicks the left mouse button at `point` (global display coordinates, origin top-left).
+    public static func click(at point: CGPoint) async throws {
+        for type in [CGEventType.leftMouseDown, .leftMouseUp] {
+            guard let event = CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: point, mouseButton: .left)
+            else {
+                throw E2EError.failed("Cannot create mouse event at \(point)")
+            }
+            event.setIntegerValueField(.eventSourceUserData, value: E2EDriverEventMarker)
+            event.post(tap: .cghidEventTap)
+            try await Task.sleep(for: .milliseconds(30))
+        }
         try await Task.sleep(for: interKeyDelay)
     }
 

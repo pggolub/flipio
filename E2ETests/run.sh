@@ -2,11 +2,19 @@
 # Runs the Flipio end-to-end tests against real apps on this Mac.
 # The run takes over the keyboard and focus; do not touch them while it runs.
 #
-# Usage: ./run.sh [swift test arguments]     e.g. ./run.sh --filter "VS Code"
+# Usage: ./run.sh [--dont-quit-flipio] [swift test arguments]     e.g. ./run.sh --filter "VSCodeBasicTests"
+#   --dont-quit-flipio   leave the Flipio under test running after the suite (the previously
+#                    running Flipio is not restored)
 # Env:   FLIPIO_APP=/path/to/Flipio.app      use an existing build instead of building Debug
 set -uo pipefail
 
 cd "$(dirname "$0")"
+
+KEEP_RUNNING=0
+ARGS=()
+for arg in "$@"; do
+    if [ "$arg" = "--dont-quit-flipio" ]; then KEEP_RUNNING=1; else ARGS+=("$arg"); fi
+done
 RUN_DIR=.run
 mkdir -p "$RUN_DIR"
 
@@ -47,12 +55,41 @@ for pid in $(flipio_pids); do
 done
 
 cleanup() {
+    [ "$KEEP_RUNNING" = 1 ] && return
     stop_flipio
     if [ -n "$PREVIOUS_FLIPIO" ] && [ -d "$PREVIOUS_FLIPIO" ]; then
         open "$PREVIOUS_FLIPIO"
     fi
 }
 trap cleanup EXIT
+
+# Release builds are signed with the self-signed "Flipio Self-Signed" certificate, so macOS
+# treats them as one app and keeps their Accessibility permission. Re-sign the Debug build the
+# same way (as in .github/workflows/release.yml) so it reuses the permission already granted to
+# the installed Flipio. Without the certificate, the Apple Development signature stays and
+# macOS asks for Accessibility once for this build.
+SIGN_IDENTITY="Flipio Self-Signed"
+sign_like_release() {
+    local app=$1
+    if ! security find-identity -p codesigning | grep -q "$SIGN_IDENTITY"; then
+        echo "==> '$SIGN_IDENTITY' certificate not in the keychain; keeping the Xcode signature" >&2
+        echo "    (import ../flipio-signing.p12 to reuse the installed Flipio's Accessibility permission)" >&2
+        return
+    fi
+    echo "==> Signing with '$SIGN_IDENTITY'"
+    local spk="$app/Contents/Frameworks/Sparkle.framework/Versions/B"
+    local item
+    for item in \
+        "$spk/XPCServices/Installer.xpc" \
+        "$spk/XPCServices/Downloader.xpc" \
+        "$spk/Autoupdate" \
+        "$spk/Updater.app" \
+        "$app/Contents/Frameworks/Sparkle.framework"; do
+        [ -e "$item" ] && { codesign --force --options=runtime --sign "$SIGN_IDENTITY" "$item" || exit 1; }
+    done
+    codesign --force --options=runtime --entitlements ../App/Flipio.entitlements \
+        --sign "$SIGN_IDENTITY" "$app" || exit 1
+}
 
 if [ -n "${FLIPIO_APP:-}" ]; then
     APP="$FLIPIO_APP"
@@ -61,6 +98,7 @@ else
     xcodebuild -project ../Flipio.xcodeproj -scheme Flipio -configuration Debug \
         -derivedDataPath "$RUN_DIR/DerivedData" -quiet build || exit 1
     APP="$RUN_DIR/DerivedData/Build/Products/Debug/Flipio.app"
+    sign_like_release "$APP"
 fi
 [ -d "$APP" ] || { echo "Flipio.app not found at $APP" >&2; exit 1; }
 
@@ -74,5 +112,5 @@ done
 sleep 1
 
 echo "==> Running tests (do not touch the keyboard or mouse)"
-swift test --no-parallel --disable-xctest "$@"
+swift test --no-parallel --disable-xctest --maximum-repetitions 1 ${ARGS[@]+"${ARGS[@]}"}
 exit $?

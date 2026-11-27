@@ -4,14 +4,39 @@
 
 import Foundation
 import notify
+import os
 
 /// Posts Darwin notifications that let the end-to-end tests wait for Flipio instead of sleeping.
 /// Disabled unless Flipio is launched with `-TestHooksEnabled YES` (or the default is written).
 /// The result is encoded in the notification state (`notify_set_state`): Darwin notifications
 /// need no run loop on the receiving side and carry no payload restrictions in the sandbox.
 enum TestHooks {
+    static let readyName = "com.flipio.test.ready"
     static let conversionFinishedName = "com.flipio.test.conversionFinished"
     static let layoutVerifiedName = "com.flipio.test.layoutVerified"
+
+    private static let readyToken: Int32? = {
+        guard isEnabled else { return nil }
+        let pid = ProcessInfo.processInfo.processIdentifier
+        var token: Int32 = 0
+        let registrationStatus = notify_register_check("\(readyName).\(pid)", &token)
+        guard registrationStatus == NOTIFY_STATUS_OK else {
+            FlipioApp.logger.error("TestHooks: readiness registration failed (status \(registrationStatus))")
+            return nil
+        }
+        let stateStatus = notify_set_state(token, UInt64(pid))
+        guard stateStatus == NOTIFY_STATUS_OK else {
+            notify_cancel(token)
+            FlipioApp.logger.error("TestHooks: readiness state failed (status \(stateStatus))")
+            return nil
+        }
+        return token
+    }()
+
+    static func start() {
+        // Keep the registration alive so preflight can read the running app's PID.
+        _ = readyToken
+    }
 
     /// Final outcome of a layout switch; raw values are part of the E2ETests contract.
     enum LayoutOutcome: UInt64 {
